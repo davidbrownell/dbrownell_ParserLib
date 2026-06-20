@@ -47,6 +47,7 @@ dev = [
 
 [tool.pytest.ini_options]
 addopts = "--verbose -vv --capture=no --cov=dbrownell_ParserLib --cov-report html --cov-report term --cov-report xml:coverage.xml --cov-fail-under=95.0"
+python_files = ["tests/*Tests.py"]
 
 [tool.ruff]
 line-length = 110
