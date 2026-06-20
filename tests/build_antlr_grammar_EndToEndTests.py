@@ -23,7 +23,7 @@ def _JavaAvailable() -> bool:
 # ----------------------------------------------------------------------
 def _Antlr4Available() -> bool:
     try:
-        import antlr4  # noqa: F401  # ty: ignore[unresolved-import]
+        import antlr4  # noqa: F401
 
         return True
     except ImportError:
@@ -267,7 +267,7 @@ class TestBuildAntlrGrammar:
 
             sys.path.insert(0, str(output_dir))
             with ExitStack(lambda: sys.path.pop(0)):
-                from antlr4 import CommonTokenStream, InputStream  # ty: ignore[unresolved-import]
+                from antlr4 import CommonTokenStream, InputStream
 
                 from SimpleExprLexer import SimpleExprLexer  # ty: ignore[unresolved-import]
                 from SimpleExprParser import SimpleExprParser  # ty: ignore[unresolved-import]
