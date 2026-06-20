@@ -19,7 +19,7 @@ Use these conventions when writing python code:
 ## Testing
 Use these conventions when writing or exercising tests:
 
-- Run tests on the command line via `uv run pytest`.
+- Run tests on the command line via `uv run pytest`; do not attempt to change the directory before running the tests.
 - Never write tests for private functionality (the names begin with `_`).
 - All tests must assert functionality.
 - Never remove code to make tests pass.
