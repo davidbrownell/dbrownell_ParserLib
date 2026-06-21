@@ -1,7 +1,7 @@
 """Various ANTLR visitor mixins that can be used to add functionality to the generated visitor classes."""
 
 from abc import ABC, abstractmethod
-from typing import cast, TYPE_CHECKING
+from typing import cast, override, TYPE_CHECKING
 
 import antlr4
 
@@ -70,6 +70,7 @@ class InsignificantWhitespaceAntlrVisitorMixin(AntlrVisitorMixinBase):
     """Mixin that adds functionality used for grammars that ignore insignificant whitespace."""
 
     # ----------------------------------------------------------------------
+    @override
     def CreateRegion(
         self,
         ctx: antlr4.ParserRuleContext,
@@ -106,7 +107,8 @@ class SignificantWhitespaceAntlrVisitorMixin(AntlrVisitorMixinBase):
         self._newline_token_string = newline_token_string
 
     # ----------------------------------------------------------------------
-    def CreateRegion(  # noqa: D102
+    @override
+    def CreateRegion(
         self,
         ctx: antlr4.ParserRuleContext,
     ) -> Region:
