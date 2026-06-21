@@ -67,7 +67,7 @@ class _DetailExpression(Expression):
     @override
     def _GenerateAcceptDetails(self) -> Expression._GenerateAcceptDetailsResultType:
         if self.detail_value is not None:
-            yield ("detail_value", [self.detail_value])
+            yield "detail_value", self.detail_value
 
     # ----------------------------------------------------------------------
     @override
@@ -384,13 +384,12 @@ class TestExpressionAccept:
 
             def On_DetailExpression__detail_value(
                 self,
-                expressions: list[TerminalExpression],
+                expression: TerminalExpression,
                 *,
                 include_disabled: bool,
             ) -> VisitResult:
                 visited_details.append("detail_value")
-                for expr in expressions:
-                    expr.Accept(self, include_disabled=include_disabled)
+                expression.Accept(self, include_disabled=include_disabled)
                 return VisitResult.Continue
 
             @contextmanager
