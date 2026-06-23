@@ -202,7 +202,7 @@ class Expression:
     # |  Protected Types
     # |
     # ----------------------------------------------------------------------
-    _GenerateAcceptDetailsResultType = Generator[tuple[str, list[Self]]]
+    _GenerateAcceptDetailsResultType = Generator[tuple[str, Self]]
     _GetAcceptChildrenResultType = tuple[str, Iterable[Self]] | None
 
     # ----------------------------------------------------------------------

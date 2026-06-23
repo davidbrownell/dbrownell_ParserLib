@@ -6,3 +6,5 @@ __pycache__
 coverage.xml
 minisign_key.pri
 post_generation_instructions.html
+
+.antlr

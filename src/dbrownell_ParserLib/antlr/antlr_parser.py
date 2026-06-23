@@ -479,6 +479,11 @@ class _ErrorListener(antlr4.DiagnosticErrorListener):
         msg: str,
         e: antlr4.RecognitionException | None,
     ) -> None:
+        if msg.startswith("report"):
+            # I don't think that these should be errors
+            assert e is None, e
+            return
+
         location = Location(line, column + 1)
         error = Error(msg, Region(self._source, location, location))
         ex = AntlrParserException(error)

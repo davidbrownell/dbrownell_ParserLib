@@ -140,14 +140,14 @@ class TestInsignificantWhitespaceAntlrVisitorMixin:
 
             mixin = ConcreteVisitorMixin(filename, on_progress, is_included_file=False)
 
-            # Note: InsignificantWhitespaceAntlrVisitorMixin uses column directly without +1
+            # ANTLR columns are 0-based; Location columns are 1-based, so +1 is added
             ctx = CreateMockContext(1, 1, 1, 10, "hello")
 
             region = mixin.CreateRegion(ctx)
 
             assert region.filename == filename
-            assert region.begin == Location(1, 1)
-            assert region.end == Location(1, 15)
+            assert region.begin == Location(1, 2)  # 1 + 1 = 2
+            assert region.end == Location(1, 16)  # 10 + 1 + len("hello") = 16
 
         # ----------------------------------------------------------------------
         def test_CreatesRegionSpanningMultipleLines(self):
@@ -156,14 +156,14 @@ class TestInsignificantWhitespaceAntlrVisitorMixin:
 
             mixin = ConcreteVisitorMixin(filename, on_progress, is_included_file=False)
 
-            # Note: InsignificantWhitespaceAntlrVisitorMixin uses column directly without +1
+            # ANTLR columns are 0-based; Location columns are 1-based, so +1 is added
             ctx = CreateMockContext(1, 5, 10, 20, "end")
 
             region = mixin.CreateRegion(ctx)
 
             assert region.filename == filename
-            assert region.begin == Location(1, 5)
-            assert region.end == Location(10, 23)
+            assert region.begin == Location(1, 6)  # 5 + 1 = 6
+            assert region.end == Location(10, 22)  # 20 + 2 = 22 (no text length added for multi-line)
 
         # ----------------------------------------------------------------------
         def test_RaisesErrorWhenStartTokenIsNone(self):

@@ -73,21 +73,48 @@ class InsignificantWhitespaceAntlrVisitorMixin(AntlrVisitorMixinBase):
     @override
     def CreateRegion(
         self,
-        ctx: antlr4.ParserRuleContext,
+        ctx: antlr4.ParserRuleContext | antlr4.TerminalNode,
     ) -> Region:
         """Create a `Region` from the given context."""
 
-        start_token = ctx.start
-        stop_token = ctx.stop
+        if isinstance(ctx, antlr4.ParserRuleContext):
+            start_token = ctx.start
+            stop_token = ctx.stop
 
-        if start_token is None or stop_token is None:
-            msg = "Context does not have start or stop token"
-            raise ValueError(msg)
+            if start_token is None or stop_token is None:
+                msg = "Context does not have start or stop token"
+                raise ValueError(msg)
+
+            start_line = start_token.line
+            start_col = start_token.column + 1
+            end_line = stop_token.line
+            end_col = stop_token.column + 1
+
+            if start_line == end_line:
+                end_col += len(stop_token.text)
+            else:
+                end_col += 1
+
+        elif isinstance(ctx, antlr4.TerminalNode):
+            token = cast(antlr4.Token, ctx.symbol)  # ty: ignore[unresolved-attribute]
+
+            assert token.column is not None
+
+            start_line = token.line
+            start_col = token.column + 1
+            end_line = token.line
+            end_col = token.column + 1 + len(token.text)
+
+        else:
+            assert False, ctx  # noqa: B011, PT015  # pragma: no cover
+
+        assert start_line is not None
+        assert end_line is not None
 
         return Region(
             self.filename,
-            Location(start_token.line, start_token.column),
-            Location(stop_token.line, stop_token.column + len(stop_token.text)),
+            Location(start_line, start_col),
+            Location(end_line, end_col),
         )
 
 
