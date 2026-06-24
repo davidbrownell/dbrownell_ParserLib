@@ -1,4 +1,4 @@
-grammar ignore_whitespace;
+grammar insignificant_whitespace;
 
 INT : [0-9]+ ;
 WS : [ \t\n\r]+ -> skip ;
