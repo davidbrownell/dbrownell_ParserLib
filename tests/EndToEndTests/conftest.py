@@ -13,8 +13,8 @@ from dbrownell_ParserLib import BuildAntlrGrammar
 
 # ----------------------------------------------------------------------
 @pytest.fixture(scope="session", autouse=True)
-def build_ignore_whitespace_grammar():
-    grammar_filename = Path(__file__).parent / "ignore_whitespace.g4"
+def build_insignificant_whitespace_grammar():
+    grammar_filename = Path(__file__).parent / "insignificant_whitespace.g4"
     assert grammar_filename.is_file(), grammar_filename
 
     dm_and_sink = iter(GenerateDoneManagerAndContent())
@@ -24,7 +24,7 @@ def build_ignore_whitespace_grammar():
     BuildAntlrGrammar(
         dm,
         grammar_filename,
-        Path(__file__).parent / "GeneratedCode" / "IgnoreWhitespace",
+        Path(__file__).parent / "GeneratedCode" / "InsignificantWhitespace",
     )
 
     content = cast(str, next(dm_and_sink))
@@ -34,7 +34,7 @@ def build_ignore_whitespace_grammar():
     assert content == textwrap.dedent(
         """\
         Heading...
-          Generating 'ignore_whitespace.g4'...DONE! (0, <scrubbed duration>)
+          Generating 'insignificant_whitespace.g4'...DONE! (0, <scrubbed duration>)
         DONE! (0, <scrubbed duration>)
         """,
     )

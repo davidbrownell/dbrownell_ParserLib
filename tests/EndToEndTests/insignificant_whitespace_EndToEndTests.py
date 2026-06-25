@@ -28,11 +28,11 @@ from .test_helpers import BinaryExpression, OutputVisitor, UnaryExpression
 # ----------------------------------------------------------------------
 @pytest.fixture
 def parser():
-    sys.path.insert(0, str(Path(__file__).parent / "GeneratedCode" / "IgnoreWhitespace"))
+    sys.path.insert(0, str(Path(__file__).parent / "GeneratedCode" / "InsignificantWhitespace"))
     with ExitStack(lambda: sys.path.pop(0)):
-        from ignore_whitespaceLexer import ignore_whitespaceLexer as Lexer  # ty: ignore[unresolved-import]
-        from ignore_whitespaceParser import ignore_whitespaceParser as Parser  # ty: ignore[unresolved-import]
-        from ignore_whitespaceVisitor import ignore_whitespaceVisitor as Visitor  # ty: ignore[unresolved-import]
+        from insignificant_whitespaceLexer import insignificant_whitespaceLexer as Lexer  # ty: ignore[unresolved-import]
+        from insignificant_whitespaceParser import insignificant_whitespaceParser as Parser  # ty: ignore[unresolved-import]
+        from insignificant_whitespaceVisitor import insignificant_whitespaceVisitor as Visitor  # ty: ignore[unresolved-import]
 
     # ----------------------------------------------------------------------
     class MyVisitor(InsignificantWhitespaceAntlrVisitorMixin, Visitor):
@@ -100,7 +100,7 @@ def test_SingleFile(parser):
 
     result = parser(
         dm,
-        Path(__file__).parent / "ignore_whitespace.txt",
+        Path(__file__).parent / "insignificant_whitespace.txt",
         None,
     )
 
