@@ -84,6 +84,7 @@ def parser():
             self._stack.append(TerminalExpression[int](self.CreateRegion(ctx), int(ctx.getText())))
 
     # ----------------------------------------------------------------------
+
     return CreateAntlrParser(
         Lexer,
         Parser,
@@ -124,6 +125,7 @@ def test_SingleFile(parser):
 
     for expression in result._stack:
         expression.Accept(visitor)
+        output.write("\n")
 
     assert output.getvalue() == textwrap.dedent(
         """\
@@ -142,8 +144,10 @@ def test_SingleFile(parser):
           /
           TerminalExpression, Ln 1 Col 13 - Ln 1 Col 16
           333
+
         TerminalExpression, Ln 2 Col 1 - Ln 2 Col 2
         4
+
         BinaryExpression, Ln 3 Col 1 - Ln 3 Col 6
           TerminalExpression, Ln 3 Col 1 - Ln 3 Col 2
           5
@@ -151,13 +155,15 @@ def test_SingleFile(parser):
           +
           TerminalExpression, Ln 3 Col 5 - Ln 3 Col 6
           6
-        BinaryExpression, Ln 5 Col 1 - Ln 7 Col 10
+
+        BinaryExpression, Ln 5 Col 1 - Ln 7 Col 13
           TerminalExpression, Ln 5 Col 1 - Ln 5 Col 2
           8
           TerminalExpression, Ln 6 Col 5 - Ln 6 Col 6
           *
-          TerminalExpression, Ln 7 Col 9 - Ln 7 Col 10
-          9
+          TerminalExpression, Ln 7 Col 9 - Ln 7 Col 13
+          9999
+
         """,
     )
 

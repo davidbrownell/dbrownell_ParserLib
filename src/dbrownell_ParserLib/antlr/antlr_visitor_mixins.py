@@ -1,5 +1,7 @@
 """Various ANTLR visitor mixins that can be used to add functionality to the generated visitor classes."""
 
+import re
+
 from abc import ABC, abstractmethod
 from typing import cast, override, TYPE_CHECKING
 
@@ -35,14 +37,36 @@ class AntlrVisitorMixinBase(ABC):
         self._current_line: int = 0
 
     # ----------------------------------------------------------------------
-    @abstractmethod
     def CreateRegion(
         self,
-        ctx: antlr4.ParserRuleContext,
+        ctx: antlr4.TerminalNode | antlr4.ParserRuleContext,
     ) -> Region:
         """Create a `Region` from the given context."""
 
-        raise NotImplementedError()  # pragma: no cover
+        if isinstance(ctx, antlr4.TerminalNode):
+            token = cast(antlr4.Token, ctx.symbol)  # ty: ignore[unresolved-attribute]
+
+            assert token.column is not None
+
+            start_line = token.line
+            start_col = token.column + 1
+            end_line = token.line
+            end_col = token.column + 1 + len(token.text)
+
+            assert start_line is not None
+            assert end_line is not None
+
+            region = Region(
+                self.filename,
+                Location(start_line, start_col),
+                Location(end_line, end_col),
+            )
+        else:
+            region = self._CreateRegionFromRule(ctx)
+
+        self._OnProgress(region.end.line)
+
+        return region
 
     # ----------------------------------------------------------------------
     def GetChildren(self, ctx: antlr4.ParserRuleContext) -> list[object]:
@@ -64,49 +88,28 @@ class AntlrVisitorMixinBase(ABC):
             self._current_line = end_line
             self._on_progress_func(end_line)
 
+    # ----------------------------------------------------------------------
+    @abstractmethod
+    def _CreateRegionFromRule(self, ctx: antlr4.ParserRuleContext) -> Region: ...
+
 
 # ----------------------------------------------------------------------
 class InsignificantWhitespaceAntlrVisitorMixin(AntlrVisitorMixinBase):
     """Mixin that adds functionality used for grammars that ignore insignificant whitespace."""
 
     # ----------------------------------------------------------------------
-    @override
-    def CreateRegion(
-        self,
-        ctx: antlr4.ParserRuleContext | antlr4.TerminalNode,
-    ) -> Region:
-        """Create a `Region` from the given context."""
+    def _CreateRegionFromRule(self, ctx: antlr4.ParserRuleContext) -> Region:
+        start_token = ctx.start
+        stop_token = ctx.stop
 
-        if isinstance(ctx, antlr4.ParserRuleContext):
-            start_token = ctx.start
-            stop_token = ctx.stop
+        if start_token is None or stop_token is None:
+            msg = "Context does not have start or stop token"
+            raise ValueError(msg)
 
-            if start_token is None or stop_token is None:
-                msg = "Context does not have start or stop token"
-                raise ValueError(msg)
-
-            start_line = start_token.line
-            start_col = start_token.column + 1
-            end_line = stop_token.line
-            end_col = stop_token.column + 1
-
-            if start_line == end_line:
-                end_col += len(stop_token.text)
-            else:
-                end_col += 1
-
-        elif isinstance(ctx, antlr4.TerminalNode):
-            token = cast(antlr4.Token, ctx.symbol)  # ty: ignore[unresolved-attribute]
-
-            assert token.column is not None
-
-            start_line = token.line
-            start_col = token.column + 1
-            end_line = token.line
-            end_col = token.column + 1 + len(token.text)
-
-        else:
-            assert False, ctx  # noqa: B011, PT015  # pragma: no cover
+        start_line = start_token.line
+        start_col = start_token.column + 1
+        end_line = stop_token.line
+        end_col = stop_token.column + 1 + len(stop_token.text)
 
         assert start_line is not None
         assert end_line is not None
@@ -133,52 +136,34 @@ class SignificantWhitespaceAntlrVisitorMixin(AntlrVisitorMixinBase):
         self._newline_token = newline_token
         self._newline_token_string = newline_token_string
 
+        self._newline_indent_regex = re.compile(r"^\r?\n[ \t]*$")
+
     # ----------------------------------------------------------------------
     @override
-    def CreateRegion(
+    def _CreateRegionFromRule(
         self,
         ctx: antlr4.ParserRuleContext,
     ) -> Region:
         assert isinstance(ctx.start, antlr4.Token), ctx.start
         assert isinstance(ctx.stop, antlr4.Token), ctx.stop
 
-        if ctx.stop.type == self._dedent_token:
-            stop_line = ctx.stop.line
-            stop_col = ctx.stop.column
+        if ctx.stop.text == self._newline_token_string or self._newline_indent_regex.match(ctx.stop.text):
+            assert ctx.stop.line == ctx.start.line or ctx.stop.line - 1 == ctx.start.line, (
+                ctx.start.line,
+                ctx.stop.line,
+            )
 
-        elif ctx.stop.type == self._newline_token and ctx.stop.text == self._newline_token_string:
-            if ctx.stop.line == ctx.start.line:
-                # This is the scenario where the statement is followed by a dedent followed by another
-                # statement. We don't want the range of this item to overlap with the range of the
-                # next item, so use the values as they are, even though it means that a statement
-                # that terminates with a newline will not have the newline here.
-                stop_line = ctx.stop.line
-                stop_col = ctx.stop.column
-            else:
-                stop_line = ctx.stop.line
-                stop_col = ctx.stop.column if ctx.stop.column == 0 else ctx.start.column
+            stop_line = ctx.start.line
+            stop_column = ctx.start.column + 1 + len(ctx.start.text)
 
-        else:
-            stop_line = ctx.stop.line
-
-            content = ctx.stop.text
-            lines = content.split("\n")
-
-            if ctx.stop.type == self._newline_token:
-                assert content.startswith("\n"), content
-                assert len(lines) == 2, lines  # noqa: PLR2004
-
-            stop_col = len(lines[-1])
-
-            if stop_line == ctx.stop.line:
-                stop_col += ctx.stop.column
-
-            stop_line += len(lines) - 1
-
-        self._OnProgress(stop_line)
+            return Region(
+                self.filename,
+                Location(ctx.start.line, ctx.start.column + 1),
+                Location(stop_line, stop_column),
+            )
 
         return Region(
             self.filename,
             Location(ctx.start.line, ctx.start.column + 1),
-            Location(stop_line, stop_col),
+            Location(ctx.stop.line, ctx.stop.column + 1),
         )

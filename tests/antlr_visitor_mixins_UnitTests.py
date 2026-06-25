@@ -163,7 +163,7 @@ class TestInsignificantWhitespaceAntlrVisitorMixin:
 
             assert region.filename == filename
             assert region.begin == Location(1, 6)  # 5 + 1 = 6
-            assert region.end == Location(10, 22)  # 20 + 2 = 22 (no text length added for multi-line)
+            assert region.end == Location(10, 24)  # 20 + 4 = 24
 
         # ----------------------------------------------------------------------
         def test_RaisesErrorWhenStartTokenIsNone(self):
@@ -218,7 +218,7 @@ class TestSignificantWhitespaceAntlrVisitorMixin:
             region = mixin.CreateRegion(ctx)
 
             assert region.begin == Location(1, 1)
-            assert region.end == Location(5, 4)
+            assert region.end == Location(5, 5)
             on_progress.assert_called_once_with(5)
 
         # ----------------------------------------------------------------------
@@ -241,7 +241,7 @@ class TestSignificantWhitespaceAntlrVisitorMixin:
             region = mixin.CreateRegion(ctx)
 
             assert region.begin == Location(5, 1)
-            assert region.end == Location(5, 10)
+            assert region.end == Location(5, 6)
 
         # ----------------------------------------------------------------------
         def test_WithNewlineTokenDifferentLineColumnNonZeroFallsBackToStartColumn(self):
@@ -258,13 +258,15 @@ class TestSignificantWhitespaceAntlrVisitorMixin:
                 newline_token_string="<NEWLINE>",
             )
 
-            # When stop.column != 0, uses start.column for stop_col
-            ctx = CreateMockContext(1, 5, 3, 8, "<NEWLINE>", newline_token)
+            # Newline tokens can span at most 2 lines (stop.line == start.line or stop.line - 1 == start.line)
+            # start at (1, 5), stop at (2, 8) with text "<NEWLINE>"
+            # Resulting region uses start.line and start.column + 1 + len(start.text) for end
+            ctx = CreateMockContext(1, 5, 2, 8, "<NEWLINE>", newline_token)
 
             region = mixin.CreateRegion(ctx)
 
             assert region.begin == Location(1, 6)
-            assert region.end == Location(3, 5)
+            assert region.end == Location(1, 11)
 
         # ----------------------------------------------------------------------
         def test_WithOtherTokenSingleLine(self):
@@ -285,7 +287,7 @@ class TestSignificantWhitespaceAntlrVisitorMixin:
             region = mixin.CreateRegion(ctx)
 
             assert region.begin == Location(5, 11)
-            assert region.end == Location(5, 25)
+            assert region.end == Location(5, 16)
 
         # ----------------------------------------------------------------------
         def test_WithOtherTokenMultiLine(self):
@@ -306,7 +308,7 @@ class TestSignificantWhitespaceAntlrVisitorMixin:
             region = mixin.CreateRegion(ctx)
 
             assert region.begin == Location(1, 1)
-            assert region.end == Location(3, 5)
+            assert region.end == Location(1, 1)
 
         # ----------------------------------------------------------------------
         def test_WithNewlineTokenContainingActualNewline(self):
@@ -323,16 +325,16 @@ class TestSignificantWhitespaceAntlrVisitorMixin:
                 newline_token_string="<NEWLINE>",
             )
 
-            # When newline token text doesn't match newline_token_string exactly,
-            # falls through to else branch: stop_col = len(last_line) + ctx.stop.column
-            # "\n    " splits to ["", "    "], last_line = "    " (len 4)
-            # stop_col = 4 + 10 = 14, stop_line = 1 + 1 = 2
+            # "\n    " matches the newline_indent_regex (^\r?\n[ \t]*$), so enters if branch
+            # Uses start.line and start.column + 1 + len(start.text)
+            # start: line 1, column 0, text "token" (len 5)
+            # end: line 1, column 0 + 1 + 5 = 6
             ctx = CreateMockContext(1, 0, 1, 10, "\n    ", newline_token)
 
             region = mixin.CreateRegion(ctx)
 
             assert region.begin == Location(1, 1)
-            assert region.end == Location(2, 14)
+            assert region.end == Location(1, 6)
 
         # ----------------------------------------------------------------------
         def test_CallsOnProgress(self):

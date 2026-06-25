@@ -485,7 +485,7 @@ class _ErrorListener(antlr4.DiagnosticErrorListener):
             return
 
         location = Location(line, column + 1)
-        error = Error(msg, Region(self._source, location, location))
+        error = Error(f"Syntax error: {msg}", Region(self._source, location, location))
         ex = AntlrParserException(error)
 
         if e is None:

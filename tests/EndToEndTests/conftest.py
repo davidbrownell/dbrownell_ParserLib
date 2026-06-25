@@ -38,3 +38,32 @@ def build_insignificant_whitespace_grammar():
         DONE! (0, <scrubbed duration>)
         """,
     )
+
+
+# ----------------------------------------------------------------------
+@pytest.fixture(scope="session", autouse=True)
+def build_significant_whitespace_grammar():
+    grammar_filename = Path(__file__).parent / "significant_whitespace.g4"
+    assert grammar_filename.is_file(), grammar_filename
+
+    dm_and_sink = iter(GenerateDoneManagerAndContent())
+
+    dm = cast(DoneManager, next(dm_and_sink))
+
+    BuildAntlrGrammar(
+        dm,
+        grammar_filename,
+        Path(__file__).parent / "GeneratedCode" / "SignificantWhitespace",
+    )
+
+    content = cast(str, next(dm_and_sink))
+
+    assert dm.result == 0, content
+
+    assert content == textwrap.dedent(
+        """\
+        Heading...
+          Generating 'significant_whitespace.g4'...DONE! (0, <scrubbed duration>)
+        DONE! (0, <scrubbed duration>)
+        """,
+    )
