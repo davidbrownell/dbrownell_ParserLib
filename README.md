@@ -25,10 +25,153 @@
 - [License](#license)
 
 ## Overview
-TODO: Complete this section
+`dbrownell_ParserLib` is a Python library that provides utility functionality for creating parsers, with a primary focus on [ANTLR](https://antlr.org) (Another Tool for Language Recognition) integration. The library simplifies the process of building parsers that produce strongly-typed abstract syntax trees (ASTs) with comprehensive source location tracking.
+
+### Key Features
+- **ANTLR Integration**: Streamlined wrapper around ANTLR for Python, handling grammar compilation and parser generation
+- **AST Representation**: Expression-based AST nodes with automatic parent-child relationship management
+- **Source Location Tracking**: Every AST node tracks its source file location (filename, line, column ranges) for detailed error reporting
+- **Visitor Pattern**: Flexible visitor pattern implementation with fine-grained traversal control
+- **Error Handling**: Rich error objects that associate messages with source locations and extract Python exception tracebacks
+- **Multi-threaded Parsing**: Built-in support for parsing multiple files concurrently
+- **Workspace Support**: Parse entire directory trees with customizable file filtering
+- **Whitespace Handling**: Mixins for both insignificant and significant whitespace grammars (e.g., Python-like indentation)
 
 ### How to use `dbrownell_ParserLib`
-TODO: Complete this section
+
+The typical workflow for creating a parser with this library involves:
+
+#### 1. Define an ANTLR Grammar
+Create a `.g4` grammar file defining your language syntax:
+```antlr
+grammar Calculator;
+
+expr : expr op=('*'|'/') expr   # BinaryOp
+     | expr op=('+'|'-') expr   # BinaryOp
+     | INT                       # Number
+     ;
+
+INT : [0-9]+ ;
+WS : [ \t\n\r]+ -> skip ;
+```
+
+#### 2. Build the Grammar
+Use `BuildAntlrGrammar` to generate the lexer and parser:
+```python
+from dbrownell_ParserLib import BuildAntlrGrammar
+from pathlib import Path
+
+BuildAntlrGrammar(
+    dm,  # DoneManager instance
+    Path("Calculator.g4"),
+    Path("output_dir"),
+)
+```
+
+#### 3. Create Custom Visitor
+Implement a visitor that converts ANTLR parse trees to Expression objects:
+```python
+from dbrownell_ParserLib import (
+    Expression,
+    InsignificantWhitespaceAntlrVisitorMixin,
+    TerminalExpression,
+)
+from dataclasses import dataclass
+
+from CalculatorVisitor import CalculatorVisitor as GeneratedVisitor
+
+
+
+@dataclass(eq=False)
+class BinaryExpression(Expression):
+    left: Expression
+    operator: TerminalExpression[str]
+    right: Expression
+
+    def _GenerateAcceptDetails(self):
+        yield "left", self.left
+        yield "operator", self.operator
+        yield "right", self.right
+
+class CalculatorVisitor(InsignificantWhitespaceAntlrVisitorMixin, GeneratedVisitor):
+
+    def visitBinaryOp(self, ctx):
+        children = self.GetChildren(ctx)
+        self._stack.append(
+            BinaryExpression(
+                self.CreateRegion(ctx),
+                children[0],
+                TerminalExpression[str](self.CreateRegion(ctx.children[1]), ctx.children[1].getText()),
+                children[1],
+            )
+        )
+
+    def visitNumber(self, ctx):
+        self._stack.append(
+            TerminalExpression(self.CreateRegion(ctx), int(ctx.INT().getText()))
+        )
+```
+
+#### 4. Create Parser Instance
+Use `CreateAntlrParser` to build a callable parser:
+```python
+from dbrownell_ParserLib import CreateAntlrParser
+
+parser = CreateAntlrParser(
+    CalculatorLexer,
+    CalculatorParser,
+    CalculatorVisitor,
+    lambda p: p.expr(),  # Entry point rule
+)
+```
+from pathlib import Path
+
+from dbrownell_ParserLib import Error
+
+
+
+#### 5. Parse Files
+Parse single files, multiple files, or entire workspaces:
+```python
+# Parse a single file
+results = parser(dm, Path("input.txt"), None)
+
+# Parse multiple files
+results = parser(dm, [Path("file1.txt"), Path("file2.txt")], None)
+
+# Check results
+for filepath, result in results.items():
+    if isinstance(result, Error):
+        print(f"Parse error in {filepath}: {result}")
+    else:
+        # result is the visitor containing the parsed AST
+        ast = result._stack[0]
+        # Process the AST
+```
+
+from contextlib import contextmanager
+
+#### 6. Traverse the AST
+Use the visitor pattern to process your AST:
+```python
+    @contextmanager
+
+from dbrownell_ParserLib import ExpressionVisitorHelper, VisitResult
+
+class EvaluatorVisitor(ExpressionVisitorHelper):
+    def OnBinaryExpression(self, expression):
+    @contextmanager
+
+        # Process binary expressions
+        yield VisitResult.Continue
+
+        # Process terminal values
+        yield VisitResult.Continue
+
+ast.Accept(EvaluatorVisitor())
+```
+
+For detailed examples, see the test files in the repository, particularly the end-to-end tests that demonstrate complete parsing workflows.
 
 <!-- Content below this delimiter will be copied to the generated README.md file. DO NOT REMOVE THIS COMMENT, as it will cause regeneration to fail. -->
 
