@@ -16,9 +16,9 @@ from dbrownell_Common.TestHelpers.StreamTestHelpers import GenerateDoneManagerAn
 
 from dbrownell_ParserLib import (
     AntlrParser,
-    AntlrParserException,
     CreateAntlrParser,
     Error,
+    ErrorException,
     Location,
     Region,
 )
@@ -694,7 +694,7 @@ class TestErrorHandling:
             assert dm.result == 1
 
     # ----------------------------------------------------------------------
-    def test_AntlrParserExceptionReturnsError(self):
+    def test_ErrorExceptionReturnsError(self):
         def FailingVisitorFunc(
             filename: Path,
             on_progress_func: Callable[[int], None],
@@ -705,7 +705,7 @@ class TestErrorHandling:
                 "Syntax error in file",
                 Region(filename, Location(1, 1), Location(1, 1)),
             )
-            raise AntlrParserException(error)
+            raise ErrorException(error)
 
         parser = CreateAntlrParser(
             MockLexer,
@@ -734,42 +734,3 @@ class TestErrorHandling:
             assert filename_key in result
             assert isinstance(result[filename_key], Error)
             assert result[filename_key].message == "Syntax error in file"  # ty: ignore[unresolved-attribute]
-
-
-# ----------------------------------------------------------------------
-class TestAntlrParserException:
-    # ----------------------------------------------------------------------
-    def test_Construction(self):
-        error = Error(
-            "Test error message",
-            Region(Path("test.txt"), Location(1, 1), Location(1, 10)),
-        )
-
-        exception = AntlrParserException(error)
-
-        assert exception.error is error
-        assert str(exception) == str(error)
-
-    # ----------------------------------------------------------------------
-    def test_IsException(self):
-        error = Error(
-            "Test error",
-            Region(Path("test.txt"), Location(1, 1), Location(1, 1)),
-        )
-
-        exception = AntlrParserException(error)
-
-        assert isinstance(exception, Exception)
-
-    # ----------------------------------------------------------------------
-    def test_CanBeRaisedAndCaught(self):
-        error = Error(
-            "Catchable error",
-            Region(Path("test.txt"), Location(5, 10), Location(5, 20)),
-        )
-
-        with pytest.raises(AntlrParserException) as exc_info:
-            raise AntlrParserException(error)
-
-        assert exc_info.value.error is error
-        assert exc_info.value.error.message == "Catchable error"

@@ -17,7 +17,7 @@ from dbrownell_Common import ExecuteTasks
 from dbrownell_Common.Streams.DoneManager import DoneManager  # noqa: TC002
 from plum import dispatch, overload
 
-from dbrownell_ParserLib.errors import Error, PythonError
+from dbrownell_ParserLib.errors import Error, ErrorException, PythonError
 from dbrownell_ParserLib.region import Location, Region
 
 
@@ -25,17 +25,6 @@ from dbrownell_ParserLib.region import Location, Region
 # |
 # |  Public Types
 # |
-# ----------------------------------------------------------------------
-class AntlrParserException(Exception):  # noqa: N818
-    """Exception raised by the ANTLR parser or a visitor processing the AST."""
-
-    # ----------------------------------------------------------------------
-    def __init__(self, error: Error) -> None:
-        super().__init__(str(error))
-
-        self.error = error
-
-
 # ----------------------------------------------------------------------
 class AntlrParser(ABC):
     """Abstract base class for parsers created with `CreateAntlrParser`."""
@@ -451,7 +440,7 @@ class _AntlrParser(AntlrParser):
 
                     result = visitor
 
-                except AntlrParserException as ex:
+                except ErrorException as ex:
                     result = ex.error
                 except Exception as ex:
                     result = PythonError.Create(ex)
@@ -486,7 +475,7 @@ class _ErrorListener(antlr4.DiagnosticErrorListener):
 
         location = Location(line, column + 1)
         error = Error(f"Syntax error: {msg}", Region(self._source, location, location))
-        ex = AntlrParserException(error)
+        ex = ErrorException(error)
 
         if e is None:
             raise ex
