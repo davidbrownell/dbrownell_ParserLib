@@ -4,8 +4,10 @@ import re
 import textwrap
 import traceback
 
-from dataclasses import dataclass, field, InitVar
-from functools import cached_property
+from abc import abstractmethod
+from dataclasses import dataclass, field, InitVar, make_dataclass
+from enum import Enum
+from functools import cached_property, singledispatch
 from io import StringIO
 from pathlib import Path
 from typing import Self
@@ -13,6 +15,10 @@ from typing import Self
 from dbrownell_ParserLib.region import Location, Region
 
 
+# ----------------------------------------------------------------------
+# |
+# |  Public Types
+# |
 # ----------------------------------------------------------------------
 @dataclass(frozen=True)
 class Error:
@@ -23,6 +29,13 @@ class Error:
 
     region_or_regions: InitVar[Region | list[Region]]
     regions: list[Region] = field(init=False)
+
+    # ----------------------------------------------------------------------
+    @classmethod
+    def CreateAsException(cls, *args, **kwargs) -> ErrorException:
+        """Create an `ErrorException` with an `Error` based on the provided arguments."""
+
+        return ErrorException(cls(*args, **kwargs))
 
     # ----------------------------------------------------------------------
     def __post_init__(self, region_or_regions: Region | list[Region]) -> None:
@@ -110,3 +123,110 @@ class PythonError(Error):
             regions,
             ex,
         )
+
+
+# ----------------------------------------------------------------------
+class ErrorException(Exception):  # noqa: N818
+    """Python exception that contains an `Error` object."""
+
+    # ----------------------------------------------------------------------
+    def __init__(self, error: Error) -> None:
+        super().__init__(str(error))
+        self.error = error
+
+
+# ----------------------------------------------------------------------
+# |
+# |  Public Functions
+# |
+# ----------------------------------------------------------------------
+class _CreatedError(Error):
+    """Abstract base class for errors created via `CreateErrorType`."""
+
+    # ----------------------------------------------------------------------
+    @classmethod
+    @abstractmethod
+    def Create(cls, region_or_regions: Region | list[Region], *args, **kwargs) -> Self: ...
+
+
+# ----------------------------------------------------------------------
+def CreateErrorType(
+    message_template: str,
+    **error_attributes: type,
+) -> type[_CreatedError]:
+    """Create a new `Error` type with the provided message template and attributes.
+
+    Example:
+        MyError = CreateErrorType(
+            "This is an error with attribute {attr1} and {attr2}",
+            attr1=str,
+            attr2=int,
+        )
+
+    """
+
+    dynamic_fields_class = make_dataclass(
+        "DynamicFields",
+        error_attributes.items(),
+        bases=(_CreatedError,),
+        frozen=True,
+    )
+
+    # ----------------------------------------------------------------------
+    @dataclass(frozen=True)
+    class NewError(dynamic_fields_class):  # ty: ignore[unsupported-base]
+        # ----------------------------------------------------------------------
+        @classmethod
+        def Create(
+            cls,
+            region_or_regions: Region | list[Region],
+            *args,
+            **kwargs,
+        ) -> Self:
+            """Create a new instance of this error type."""
+
+            kvps = {k: _ArgToString(v) for k, v in zip(error_attributes.keys(), args, strict=False)}
+
+            for k, v in kwargs.items():
+                kvps[k] = _ArgToString(v)
+
+            return cls(
+                message_template.format(**kvps),  # ty: ignore[too-many-positional-arguments]
+                region_or_regions,
+                *args,
+                **kwargs,
+            )
+
+        # ----------------------------------------------------------------------
+        @classmethod
+        def CreateAsException(cls, *args, **kwargs) -> ErrorException:
+            return ErrorException(cls.Create(*args, **kwargs))
+
+    # ----------------------------------------------------------------------
+
+    return NewError
+
+
+# ----------------------------------------------------------------------
+# |
+# |  Private Functions
+# |
+# ----------------------------------------------------------------------
+@singledispatch
+def _ArgToString(value: object) -> str:
+    return str(value)
+
+
+@_ArgToString.register
+def _(value: str) -> str:
+    return value
+
+
+@_ArgToString.register
+def _(value: Enum) -> str:
+    return value.name
+
+
+@_ArgToString.register
+def _(value: list) -> str:
+    return "[{}]".format(", ".join("'{}'".format(_ArgToString(v)) for v in value))
