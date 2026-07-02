@@ -39,16 +39,18 @@
 
 ### How to use `dbrownell_ParserLib`
 
-The typical workflow for creating a parser with this library involves:
+The typical workflow for creating a parser with this library involves the following steps. For detailed examples, see the test files in the repository, particularly the end-to-end tests that demonstrate complete parsing workflows.
+
 
 #### 1. Define an ANTLR Grammar
 Create a `.g4` grammar file defining your language syntax:
+
 ```antlr
 grammar Calculator;
 
-expr : expr op=('*'|'/') expr   # BinaryOp
-     | expr op=('+'|'-') expr   # BinaryOp
-     | INT                       # Number
+expr : expr ('*'|'/') expr   # BinaryOp
+     | expr ('+'|'-') expr   # BinaryOp
+     | INT                   # Number
      ;
 
 INT : [0-9]+ ;
@@ -57,9 +59,12 @@ WS : [ \t\n\r]+ -> skip ;
 
 #### 2. Build the Grammar
 Use `BuildAntlrGrammar` to generate the lexer and parser:
+
 ```python
-from dbrownell_ParserLib import BuildAntlrGrammar
 from pathlib import Path
+
+from dbrownell_ParserLib import BuildAntlrGrammar
+
 
 BuildAntlrGrammar(
     dm,  # DoneManager instance
@@ -70,16 +75,17 @@ BuildAntlrGrammar(
 
 #### 3. Create Custom Visitor
 Implement a visitor that converts ANTLR parse trees to Expression objects:
+
 ```python
+from dataclasses import dataclass
+
 from dbrownell_ParserLib import (
     Expression,
     InsignificantWhitespaceAntlrVisitorMixin,
     TerminalExpression,
 )
-from dataclasses import dataclass
 
 from CalculatorVisitor import CalculatorVisitor as GeneratedVisitor
-
 
 
 @dataclass(eq=False)
@@ -93,29 +99,34 @@ class BinaryExpression(Expression):
         yield "operator", self.operator
         yield "right", self.right
 
-class CalculatorVisitor(InsignificantWhitespaceAntlrVisitorMixin, GeneratedVisitor):
 
-    def visitBinaryOp(self, ctx):
+class CalculatorVisitor(InsignificantWhitespaceAntlrVisitorMixin, GeneratedVisitor):
+    def visitExpr(self, ctx):
         children = self.GetChildren(ctx)
+        assert len(children) == 2, children
+
         self._stack.append(
             BinaryExpression(
                 self.CreateRegion(ctx),
                 children[0],
-                TerminalExpression[str](self.CreateRegion(ctx.children[1]), ctx.children[1].getText()),
+                TerminalExpression[str](self.CreateRegion(ctx.children[1]), ctx.children[1].getText()),
+
                 children[1],
             )
         )
 
     def visitNumber(self, ctx):
         self._stack.append(
-            TerminalExpression(self.CreateRegion(ctx), int(ctx.INT().getText()))
+            TerminalExpression(self.CreateRegion(ctx), int(ctx.getText()))
         )
 ```
 
 #### 4. Create Parser Instance
 Use `CreateAntlrParser` to build a callable parser:
+
 ```python
 from dbrownell_ParserLib import CreateAntlrParser
+
 
 parser = CreateAntlrParser(
     CalculatorLexer,
@@ -124,15 +135,14 @@ parser = CreateAntlrParser(
     lambda p: p.expr(),  # Entry point rule
 )
 ```
-from pathlib import Path
-
-from dbrownell_ParserLib import Error
-
-
 
 #### 5. Parse Files
 Parse single files, multiple files, or entire workspaces:
+
 ```python
+from dbrownell_ParserLib import Error
+
+
 # Parse a single file
 results = parser(dm, Path("input.txt"), None)
 
@@ -149,29 +159,24 @@ for filepath, result in results.items():
         # Process the AST
 ```
 
-from contextlib import contextmanager
-
 #### 6. Traverse the AST
 Use the visitor pattern to process your AST:
+
 ```python
-    @contextmanager
+from contextlib import contextmanager
 
 from dbrownell_ParserLib import ExpressionVisitorHelper, VisitResult
 
-class EvaluatorVisitor(ExpressionVisitorHelper):
-    def OnBinaryExpression(self, expression):
-    @contextmanager
 
+class EvaluatorVisitor(ExpressionVisitorHelper):
+    @contextmanager
+    def OnBinaryExpression(self, expression):
         # Process binary expressions
         yield VisitResult.Continue
 
-        # Process terminal values
-        yield VisitResult.Continue
 
 ast.Accept(EvaluatorVisitor())
 ```
-
-For detailed examples, see the test files in the repository, particularly the end-to-end tests that demonstrate complete parsing workflows.
 
 <!-- Content below this delimiter will be copied to the generated README.md file. DO NOT REMOVE THIS COMMENT, as it will cause regeneration to fail. -->
 
