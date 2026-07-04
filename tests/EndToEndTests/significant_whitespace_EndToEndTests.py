@@ -13,15 +13,13 @@ from dbrownell_Common.ContextlibEx import ExitStack
 from dbrownell_Common.Streams.DoneManager import DoneManager
 from dbrownell_Common.TestHelpers.StreamTestHelpers import GenerateDoneManagerAndContent
 
-from dbrownell_ParserLib import (
-    AntlrParser,
-    CreateAntlrParser,
-    Error,
-    Expression,
-    SignificantWhitespaceAntlrVisitorMixin,
-    TerminalExpression,
+from dbrownell_ParserLib.antlr.antlr_parser import AntlrParser, CreateAntlrParser
+from dbrownell_ParserLib.antlr.antlr_visitor_mixins import (
     AntlrVisitorMixinBase,
+    SignificantWhitespaceAntlrVisitorMixin,
 )
+from dbrownell_ParserLib.errors import Error, ErrorException
+from dbrownell_ParserLib.terminal_expression import Expression, TerminalExpression
 
 from .test_helpers import BinaryExpression, OutputVisitor, UnaryExpression
 
