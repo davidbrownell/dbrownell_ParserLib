@@ -12,7 +12,7 @@ from dbrownell_Common.ContextlibEx import ExitStack
 from dbrownell_Common.Streams.DoneManager import DoneManager
 from dbrownell_Common.TestHelpers.StreamTestHelpers import GenerateDoneManagerAndContent
 
-from dbrownell_ParserLib import BuildAntlrGrammar
+from dbrownell_ParserLib.antlr.build_antlr_grammar import BuildAntlrGrammar
 
 
 # ----------------------------------------------------------------------

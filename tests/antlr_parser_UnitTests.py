@@ -14,14 +14,9 @@ import pytest
 from dbrownell_Common.Streams.DoneManager import DoneManager
 from dbrownell_Common.TestHelpers.StreamTestHelpers import GenerateDoneManagerAndContent
 
-from dbrownell_ParserLib import (
-    AntlrParser,
-    CreateAntlrParser,
-    Error,
-    ErrorException,
-    Location,
-    Region,
-)
+from dbrownell_ParserLib.antlr.antlr_parser import AntlrParser, CreateAntlrParser
+from dbrownell_ParserLib.errors import Error, ErrorException
+from dbrownell_ParserLib.region import Location, Region
 
 
 # ----------------------------------------------------------------------

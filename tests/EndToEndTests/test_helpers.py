@@ -5,7 +5,8 @@ from typing import override, TextIO, TYPE_CHECKING
 from dbrownell_Common.ContextlibEx import ExitStack
 from dbrownell_Common.Streams.StreamDecorator import StreamDecorator
 
-from dbrownell_ParserLib import Expression, ExpressionVisitorHelper, TerminalExpression, VisitResult
+from dbrownell_ParserLib.expression import Expression, ExpressionVisitorHelper, VisitResult
+from dbrownell_ParserLib.terminal_expression import TerminalExpression
 
 if TYPE_CHECKING:
     from collections.abc import Generator

@@ -63,7 +63,7 @@ Use `BuildAntlrGrammar` to generate the lexer and parser:
 ```python
 from pathlib import Path
 
-from dbrownell_ParserLib import BuildAntlrGrammar
+from dbrownell_ParserLib.antlr.build_antlr_grammar import BuildAntlrGrammar
 
 
 BuildAntlrGrammar(
@@ -79,11 +79,9 @@ Implement a visitor that converts ANTLR parse trees to Expression objects:
 ```python
 from dataclasses import dataclass
 
-from dbrownell_ParserLib import (
-    Expression,
-    InsignificantWhitespaceAntlrVisitorMixin,
-    TerminalExpression,
-)
+from dbrownell_ParserLib.antlr.antlr_visitor_mixins import InsignificantWhitespaceAntlrVisitorMixin
+from dbrownell_ParserLib.expression import Expression
+from dbrownell_ParserLib.terminal_expression import TerminalExpression
 
 from CalculatorVisitor import CalculatorVisitor as GeneratedVisitor
 
@@ -125,7 +123,7 @@ class CalculatorVisitor(InsignificantWhitespaceAntlrVisitorMixin, GeneratedVisit
 Use `CreateAntlrParser` to build a callable parser:
 
 ```python
-from dbrownell_ParserLib import CreateAntlrParser
+from dbrownell_ParserLib.antlr.antlr_parser import CreateAntlrParser
 
 
 parser = CreateAntlrParser(
@@ -140,7 +138,7 @@ parser = CreateAntlrParser(
 Parse single files, multiple files, or entire workspaces:
 
 ```python
-from dbrownell_ParserLib import Error
+from dbrownell_ParserLib.errors import Error
 
 
 # Parse a single file
@@ -165,7 +163,7 @@ Use the visitor pattern to process your AST:
 ```python
 from contextlib import contextmanager
 
-from dbrownell_ParserLib import ExpressionVisitorHelper, VisitResult
+from dbrownell_ParserLib.visitors import ExpressionVisitorHelper, VisitResult
 
 
 class EvaluatorVisitor(ExpressionVisitorHelper):
