@@ -350,7 +350,7 @@ class TestExtractMultilineString:
                 error.message
                 == "All lines in a multiline string must be vertically aligned with the opening token."
             )
-            assert error.regions[0].begin.line == 4
+            assert error.regions[0].begin.line == 3
             assert error.regions[0].begin.column == 3
 
         # ----------------------------------------------------------------------
@@ -367,7 +367,7 @@ class TestExtractMultilineString:
                 error.message
                 == "All lines in a multiline string must be vertically aligned with the opening token."
             )
-            assert error.regions[0].begin.line == 4
+            assert error.regions[0].begin.line == 3
             assert error.regions[0].begin.column == 3
 
         # ----------------------------------------------------------------------
@@ -404,7 +404,7 @@ class TestExtractMultilineString:
                 ExtractMultilineString(content, region)
 
             error = exc_info.value.error
-            assert error.regions[0].begin.line == 4
+            assert error.regions[0].begin.line == 3
             assert error.regions[0].begin.column == 3
 
         # ----------------------------------------------------------------------
@@ -421,7 +421,7 @@ class TestExtractMultilineString:
                 error.message
                 == "All lines in a multiline string must be vertically aligned with the opening token."
             )
-            assert error.regions[0].begin.line == 4
+            assert error.regions[0].begin.line == 3
             assert error.regions[0].begin.column == 5
 
         # ----------------------------------------------------------------------
