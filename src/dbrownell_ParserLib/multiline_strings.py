@@ -54,7 +54,7 @@ def ExtractMultilineString(
     result = _CalcPrefixColumn(lines[-1], tab_size, None)
 
     if result.column != opening_token_region.begin.column:
-        location = Location(opening_token_region.begin.line + len(lines) + 1, result.column)
+        location = Location(opening_token_region.begin.line + len(lines), result.column)
 
         raise MisalignedMultilineStringError.CreateAsException(
             Region(opening_token_region.filename, location, location)
