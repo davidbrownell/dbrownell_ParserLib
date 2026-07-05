@@ -1,4 +1,6 @@
 # noqa: D100
+import weakref
+
 from collections.abc import Generator, Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, InitVar
@@ -9,8 +11,6 @@ from dbrownell_Common.Types import extension, override
 from dbrownell_ParserLib.visitors import ExpressionVisitor, ExpressionVisitorHelper, VisitResult
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from dbrownell_ParserLib.region import Region
 
 
@@ -27,12 +27,10 @@ class Expression:
     region__: Region
     finalize: InitVar[bool] = field(kw_only=True, default=True)
 
-    parent__: Expression | None = field(init=False)
+    parent__: weakref.ref[Expression] | None = field(init=False)
 
     _unique_id: tuple[object, ...] | None = field(init=False)
     _disabled: bool = field(init=False)
-
-    _finalize_func: Callable[[], None] = field(init=False)
 
     # ----------------------------------------------------------------------
     # |
@@ -47,18 +45,6 @@ class Expression:
 
         self._unique_id = None
         self._disabled = False
-
-        # ----------------------------------------------------------------------
-        def Finalize() -> None:
-            visitor = _UniqueIdVisitor(self)
-
-            self.Accept(visitor)
-
-            self._unique_id = visitor.unique_id
-
-        # ----------------------------------------------------------------------
-
-        self._finalize_func = Finalize
 
         if finalize:
             self._Finalize()
@@ -202,7 +188,7 @@ class Expression:
     # |  Protected Types
     # |
     # ----------------------------------------------------------------------
-    _GenerateAcceptDetailsResultType = Generator[tuple[str, Self]]
+    _GenerateAcceptDetailsResultType = Generator[tuple[str, Self | list[Self]]]
     _GetAcceptChildrenResultType = tuple[str, Iterable[Self]] | None
 
     # ----------------------------------------------------------------------
@@ -211,7 +197,11 @@ class Expression:
     # |
     # ----------------------------------------------------------------------
     def _Finalize(self) -> None:
-        self._finalize_func()
+        visitor = _FinalizeVisitor(self)
+
+        self.Accept(visitor)
+
+        self._unique_id = visitor.unique_id
 
     # ----------------------------------------------------------------------
     # |
@@ -222,7 +212,7 @@ class Expression:
     def _GetTerminalUniqueId(self) -> tuple[object, ...]:
         """Get a unique identifier for this expression that doesn't include any of its children."""
 
-        msg = "This functionality should be implemented by a terminal expression (i.e. an expression that doesn't have any children)."
+        msg = f"This functionality should be implemented by a terminal expression (i.e. an expression that doesn't have any children or expression details) [{self.__class__.__name__}]"
         raise Exception(msg)
 
     # ----------------------------------------------------------------------
@@ -244,7 +234,9 @@ class Expression:
 # |  Private Types
 # |
 # ----------------------------------------------------------------------
-class _UniqueIdVisitor(ExpressionVisitorHelper):
+class _FinalizeVisitor(ExpressionVisitorHelper):
+    """Visitor that visits the children of an expression, but not anything below that; it sets the unique_id__ of the target expression and sets its children's parent attribute to the correct value."""
+
     # ----------------------------------------------------------------------
     def __init__(
         self,
@@ -268,6 +260,7 @@ class _UniqueIdVisitor(ExpressionVisitorHelper):
         self,
         expression: Expression,
     ) -> Generator[VisitResult]:
+        # This code will visit the children of the target expression, but not anything below that.
         if expression is self._target_expression:
             yield VisitResult.Continue
 
@@ -281,8 +274,9 @@ class _UniqueIdVisitor(ExpressionVisitorHelper):
 
             return
 
+        expression.parent__ = weakref.ref(self._target_expression)
+
         self._child_unique_ids.append(expression.unique_id__)
 
-        # Do not parse the children of this expression as its unique id already takes that information
-        # into account.
+        # Do not parse the grandchildren of the original target expression
         yield VisitResult.SkipChildren

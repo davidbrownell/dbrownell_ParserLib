@@ -163,16 +163,6 @@ class _ParentExpression(Expression):
     children: list[Expression]
 
     # ----------------------------------------------------------------------
-    def __post_init__(self, finalize: bool) -> None:
-        super().__post_init__(finalize=False)
-
-        for child in self.children:
-            child.parent__ = self
-
-        if finalize:
-            self._Finalize()
-
-    # ----------------------------------------------------------------------
     @override
     def _GetAcceptChildren(self) -> Expression._GetAcceptChildrenResultType:
         if not self.children:
