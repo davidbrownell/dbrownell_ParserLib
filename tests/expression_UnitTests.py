@@ -3,7 +3,7 @@
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import override
+from typing import cast, override
 
 from dbrownell_ParserLib.expression import Expression
 from dbrownell_ParserLib.location import Location
@@ -23,20 +23,10 @@ def _CreateRegion() -> Region:
 
 # ----------------------------------------------------------------------
 @dataclass
-class _ParentExpression(Expression):
-    """Expression with children for testing Accept with children."""
+class _ParentExpressionList(Expression):
+    """Expression with children for testing Accept with children as a list."""
 
     children: list[Expression] = field(default_factory=list)
-
-    # ----------------------------------------------------------------------
-    def __post_init__(self, finalize: bool) -> None:
-        super().__post_init__(finalize=False)
-
-        for child in self.children:
-            child.parent__ = self
-
-        if finalize:
-            self._Finalize()
 
     # ----------------------------------------------------------------------
     @override
@@ -48,20 +38,25 @@ class _ParentExpression(Expression):
 
 # ----------------------------------------------------------------------
 @dataclass
+class _ParentExpressionDetails(Expression):
+    """Expression with children for testing Accept with children as details."""
+
+    child1: Expression
+    child2: Expression
+
+    # ----------------------------------------------------------------------
+    @override
+    def _GenerateAcceptDetails(self) -> Expression._GenerateAcceptDetailsResultType:
+        yield "child1", self.child1
+        yield "child2", self.child2
+
+
+# ----------------------------------------------------------------------
+@dataclass
 class _DetailExpression(Expression):
     """Expression with details for testing Accept with details."""
 
     detail_value: TerminalExpression | None = None
-
-    # ----------------------------------------------------------------------
-    def __post_init__(self, finalize: bool) -> None:
-        super().__post_init__(finalize=False)
-
-        if self.detail_value is not None:
-            self.detail_value.parent__ = self
-
-        if finalize:
-            self._Finalize()
 
     # ----------------------------------------------------------------------
     @override
@@ -78,6 +73,20 @@ class _DetailExpression(Expression):
 
 
 # ----------------------------------------------------------------------
+@dataclass
+class _ListDetailExpression(Expression):
+    """Expression with a list of expressions as details for testing Accept with list details."""
+
+    detail_items: list[TerminalExpression] = field(default_factory=list)
+
+    # ----------------------------------------------------------------------
+    @override
+    def _GenerateAcceptDetails(self) -> Expression._GenerateAcceptDetailsResultType:
+        if self.detail_items:
+            yield "detail_items", cast(list[Expression], self.detail_items)
+
+
+# ----------------------------------------------------------------------
 class TestExpressionParent:
     # ----------------------------------------------------------------------
     def test_ParentIsNoneByDefault(self):
@@ -87,14 +96,25 @@ class TestExpressionParent:
         assert expr.parent__ is None
 
     # ----------------------------------------------------------------------
-    def test_ParentSetForChildren(self):
+    def test_ParentSetForChildrenList(self):
         region = _CreateRegion()
         child1 = TerminalExpression[int](region, 1)
         child2 = TerminalExpression[int](region, 2)
-        parent = _ParentExpression(region, children=[child1, child2])
+        parent = _ParentExpressionList(region, children=[child1, child2])
 
-        assert child1.parent__ is parent
-        assert child2.parent__ is parent
+        assert child1.parent__ is not None and child1.parent__() is parent
+        assert child2.parent__ is not None and child2.parent__() is parent
+        assert parent.parent__ is None
+
+    # ----------------------------------------------------------------------
+    def test_ParentSetForChildrenDetails(self):
+        region = _CreateRegion()
+        child1 = TerminalExpression[int](region, 1)
+        child2 = TerminalExpression[int](region, 2)
+        parent = _ParentExpressionDetails(region, child1, child2)
+
+        assert child1.parent__ is not None and child1.parent__() is parent
+        assert child2.parent__ is not None and child2.parent__() is parent
         assert parent.parent__ is None
 
 
@@ -292,7 +312,7 @@ class TestExpressionAccept:
         region = _CreateRegion()
         child1 = TerminalExpression[int](region, 1)
         child2 = TerminalExpression[int](region, 2)
-        parent = _ParentExpression(region, children=[child1, child2])
+        parent = _ParentExpressionList(region, children=[child1, child2])
 
         visited_expressions: list[Expression] = []
 
@@ -304,7 +324,7 @@ class TestExpressionAccept:
                 yield VisitResult.Continue
 
             @contextmanager
-            def On_ParentExpression(self, expression: _ParentExpression):
+            def On_ParentExpressionList(self, expression: _ParentExpressionList):
                 yield VisitResult.Continue
 
             @contextmanager
@@ -325,7 +345,7 @@ class TestExpressionAccept:
         region = _CreateRegion()
         child1 = TerminalExpression[int](region, 1)
         child2 = TerminalExpression[int](region, 2)
-        parent = _ParentExpression(region, children=[child1, child2])
+        parent = _ParentExpressionList(region, children=[child1, child2])
 
         visited_expressions: list[Expression] = []
 
@@ -337,7 +357,7 @@ class TestExpressionAccept:
                 yield VisitResult.Continue
 
             @contextmanager
-            def On_ParentExpression(self, expression: _ParentExpression):
+            def On_ParentExpressionList(self, expression: _ParentExpressionList):
                 yield VisitResult.SkipChildren
 
         visitor = TestVisitor()
@@ -351,7 +371,7 @@ class TestExpressionAccept:
     def test_AcceptSkipsAllOnSkipAll(self):
         region = _CreateRegion()
         child = TerminalExpression[int](region, 1)
-        parent = _ParentExpression(region, children=[child])
+        parent = _ParentExpressionList(region, children=[child])
 
         visited_expressions: list[Expression] = []
 
@@ -516,10 +536,46 @@ class TestExpressionAccept:
         assert visited_details == ["detail_value"]
 
     # ----------------------------------------------------------------------
+    def test_AcceptWithListDetails(self):
+        region = _CreateRegion()
+        item1 = TerminalExpression[int](region, 1)
+        item2 = TerminalExpression[int](region, 2)
+        item3 = TerminalExpression[int](region, 3)
+        expr = _ListDetailExpression(region, detail_items=[item1, item2, item3])
+
+        visited_items: list[int] = []
+
+        class TestVisitor(ExpressionVisitorHelper):
+            @contextmanager
+            def On_ListDetailExpression(self, expression: _ListDetailExpression):
+                yield VisitResult.Continue
+
+            def On_ListDetailExpression__detail_items(
+                self,
+                expressions: list[TerminalExpression],
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                for item in expressions:
+                    visited_items.append(item.value)
+                    item.Accept(self, include_disabled=include_disabled)
+                return VisitResult.Continue
+
+            @contextmanager
+            def OnTerminalExpression(self, expression: TerminalExpression):
+                yield VisitResult.Continue
+
+        visitor = TestVisitor()
+        result = expr.Accept(visitor)
+
+        assert result == VisitResult.Continue
+        assert visited_items == [1, 2, 3]
+
+    # ----------------------------------------------------------------------
     def test_AcceptTerminatesWhenOnExpressionChildrenReturnsTerminate(self):
         region = _CreateRegion()
         child = TerminalExpression[int](region, 1)
-        parent = _ParentExpression(region, children=[child])
+        parent = _ParentExpressionList(region, children=[child])
 
         visited_expressions: list[Expression] = []
 
@@ -531,7 +587,7 @@ class TestExpressionAccept:
                 yield VisitResult.Continue
 
             @contextmanager
-            def On_ParentExpression(self, expression: _ParentExpression):
+            def On_ParentExpressionList(self, expression: _ParentExpressionList):
                 yield VisitResult.Continue
 
             @override
@@ -550,7 +606,7 @@ class TestExpressionAccept:
     def test_AcceptSkipsChildrenWhenOnExpressionChildrenReturnsSkipChildren(self):
         region = _CreateRegion()
         child = TerminalExpression[int](region, 1)
-        parent = _ParentExpression(region, children=[child])
+        parent = _ParentExpressionList(region, children=[child])
 
         visited_expressions: list[Expression] = []
 
@@ -562,7 +618,7 @@ class TestExpressionAccept:
                 yield VisitResult.Continue
 
             @contextmanager
-            def On_ParentExpression(self, expression: _ParentExpression):
+            def On_ParentExpressionList(self, expression: _ParentExpressionList):
                 yield VisitResult.Continue
 
             @override
@@ -582,7 +638,7 @@ class TestExpressionAccept:
         region = _CreateRegion()
         child1 = TerminalExpression[int](region, 1)
         child2 = TerminalExpression[int](region, 2)
-        parent = _ParentExpression(region, children=[child1, child2])
+        parent = _ParentExpressionList(region, children=[child1, child2])
 
         visited_expressions: list[Expression] = []
 
@@ -597,7 +653,7 @@ class TestExpressionAccept:
                     yield VisitResult.Continue
 
             @contextmanager
-            def On_ParentExpression(self, expression: _ParentExpression):
+            def On_ParentExpressionList(self, expression: _ParentExpressionList):
                 yield VisitResult.Continue
 
             @contextmanager
@@ -611,6 +667,311 @@ class TestExpressionAccept:
         assert len(visited_expressions) == 2
         assert visited_expressions[0] is parent
         assert visited_expressions[1] is child1
+
+    # ----------------------------------------------------------------------
+    def test_AcceptWithChildrenDetails(self):
+        region = _CreateRegion()
+        child1 = TerminalExpression[int](region, 1)
+        child2 = TerminalExpression[int](region, 2)
+        parent = _ParentExpressionDetails(region, child1, child2)
+
+        visited_expressions: list[Expression] = []
+        visited_details: list[str] = []
+
+        class TestVisitor(ExpressionVisitorHelper):
+            @override
+            @contextmanager
+            def OnExpression(self, expression: Expression):
+                visited_expressions.append(expression)
+                yield VisitResult.Continue
+
+            @contextmanager
+            def On_ParentExpressionDetails(self, expression: _ParentExpressionDetails):
+                yield VisitResult.Continue
+
+            def On_ParentExpressionDetails__child1(
+                self,
+                expression: TerminalExpression,
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                visited_details.append("child1")
+                expression.Accept(self, include_disabled=include_disabled)
+                return VisitResult.Continue
+
+            def On_ParentExpressionDetails__child2(
+                self,
+                expression: TerminalExpression,
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                visited_details.append("child2")
+                expression.Accept(self, include_disabled=include_disabled)
+                return VisitResult.Continue
+
+            @contextmanager
+            def OnTerminalExpression(self, expression: TerminalExpression):
+                yield VisitResult.Continue
+
+        visitor = TestVisitor()
+        result = parent.Accept(visitor)
+
+        assert result == VisitResult.Continue
+        assert len(visited_expressions) == 3
+        assert visited_expressions[0] is parent
+        assert visited_expressions[1] is child1
+        assert visited_expressions[2] is child2
+        assert visited_details == ["child1", "child2"]
+
+    # ----------------------------------------------------------------------
+    def test_AcceptSkipsDetailsOnSkipDetailsForParentExpressionDetails(self):
+        region = _CreateRegion()
+        child1 = TerminalExpression[int](region, 1)
+        child2 = TerminalExpression[int](region, 2)
+        parent = _ParentExpressionDetails(region, child1, child2)
+
+        visited_expressions: list[Expression] = []
+        visited_details: list[str] = []
+
+        class TestVisitor(ExpressionVisitorHelper):
+            @override
+            @contextmanager
+            def OnExpression(self, expression: Expression):
+                visited_expressions.append(expression)
+                yield VisitResult.Continue
+
+            @contextmanager
+            def On_ParentExpressionDetails(self, expression: _ParentExpressionDetails):
+                yield VisitResult.SkipDetails
+
+            def On_ParentExpressionDetails__child1(
+                self,
+                expression: TerminalExpression,
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                visited_details.append("child1")
+                return VisitResult.Continue
+
+            def On_ParentExpressionDetails__child2(
+                self,
+                expression: TerminalExpression,
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                visited_details.append("child2")
+                return VisitResult.Continue
+
+        visitor = TestVisitor()
+        result = parent.Accept(visitor)
+
+        assert result == VisitResult.Continue
+        assert len(visited_expressions) == 1
+        assert visited_expressions[0] is parent
+        assert visited_details == []
+
+    # ----------------------------------------------------------------------
+    def test_AcceptSkipsAllOnSkipAllForParentExpressionDetails(self):
+        region = _CreateRegion()
+        child1 = TerminalExpression[int](region, 1)
+        child2 = TerminalExpression[int](region, 2)
+        parent = _ParentExpressionDetails(region, child1, child2)
+
+        visited_expressions: list[Expression] = []
+
+        class TestVisitor(ExpressionVisitorHelper):
+            @override
+            @contextmanager
+            def OnExpression(self, expression: Expression):
+                visited_expressions.append(expression)
+                yield VisitResult.SkipAll
+
+        visitor = TestVisitor()
+        result = parent.Accept(visitor)
+
+        assert result == VisitResult.Continue
+        assert len(visited_expressions) == 1
+        assert visited_expressions[0] is parent
+
+    # ----------------------------------------------------------------------
+    def test_AcceptTerminatesWhenOnExpressionDetailsReturnsTerminateForParentExpressionDetails(self):
+        region = _CreateRegion()
+        child1 = TerminalExpression[int](region, 1)
+        child2 = TerminalExpression[int](region, 2)
+        parent = _ParentExpressionDetails(region, child1, child2)
+
+        visited_expressions: list[Expression] = []
+        visited_details: list[str] = []
+
+        class TestVisitor(ExpressionVisitorHelper):
+            @override
+            @contextmanager
+            def OnExpression(self, expression: Expression):
+                visited_expressions.append(expression)
+                yield VisitResult.Continue
+
+            @contextmanager
+            def On_ParentExpressionDetails(self, expression: _ParentExpressionDetails):
+                yield VisitResult.Continue
+
+            @override
+            @contextmanager
+            def OnExpressionDetails(self, expression: Expression):
+                yield VisitResult.Terminate
+
+            def On_ParentExpressionDetails__child1(
+                self,
+                expression: TerminalExpression,
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                visited_details.append("child1")
+                return VisitResult.Continue
+
+            def On_ParentExpressionDetails__child2(
+                self,
+                expression: TerminalExpression,
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                visited_details.append("child2")
+                return VisitResult.Continue
+
+        visitor = TestVisitor()
+        result = parent.Accept(visitor)
+
+        assert result == VisitResult.Terminate
+        assert len(visited_expressions) == 1
+        assert visited_expressions[0] is parent
+        assert visited_details == []
+
+    # ----------------------------------------------------------------------
+    def test_AcceptSkipsDetailsWhenOnExpressionDetailsReturnsSkipDetails(self):
+        region = _CreateRegion()
+        child1 = TerminalExpression[int](region, 1)
+        child2 = TerminalExpression[int](region, 2)
+        parent = _ParentExpressionDetails(region, child1, child2)
+
+        visited_expressions: list[Expression] = []
+        visited_details: list[str] = []
+
+        class TestVisitor(ExpressionVisitorHelper):
+            @override
+            @contextmanager
+            def OnExpression(self, expression: Expression):
+                visited_expressions.append(expression)
+                yield VisitResult.Continue
+
+            @contextmanager
+            def On_ParentExpressionDetails(self, expression: _ParentExpressionDetails):
+                yield VisitResult.Continue
+
+            @override
+            @contextmanager
+            def OnExpressionDetails(self, expression: Expression):
+                yield VisitResult.SkipDetails
+
+            def On_ParentExpressionDetails__child1(
+                self,
+                expression: TerminalExpression,
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                visited_details.append("child1")
+                return VisitResult.Continue
+
+            def On_ParentExpressionDetails__child2(
+                self,
+                expression: TerminalExpression,
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                visited_details.append("child2")
+                return VisitResult.Continue
+
+        visitor = TestVisitor()
+        result = parent.Accept(visitor)
+
+        assert result == VisitResult.Continue
+        assert len(visited_expressions) == 1
+        assert visited_expressions[0] is parent
+        assert visited_details == []
+
+    # ----------------------------------------------------------------------
+    def test_AcceptTerminatesWhenDetailMethodReturnsTerminateForParentExpressionDetails(self):
+        region = _CreateRegion()
+        child1 = TerminalExpression[int](region, 1)
+        child2 = TerminalExpression[int](region, 2)
+        parent = _ParentExpressionDetails(region, child1, child2)
+
+        visited_details: list[str] = []
+
+        class TestVisitor(ExpressionVisitorHelper):
+            @contextmanager
+            def On_ParentExpressionDetails(self, expression: _ParentExpressionDetails):
+                yield VisitResult.Continue
+
+            def On_ParentExpressionDetails__child1(
+                self,
+                expression: TerminalExpression,
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                visited_details.append("child1")
+                return VisitResult.Terminate
+
+            def On_ParentExpressionDetails__child2(
+                self,
+                expression: TerminalExpression,
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                visited_details.append("child2")
+                return VisitResult.Continue
+
+        visitor = TestVisitor()
+        result = parent.Accept(visitor)
+
+        assert result == VisitResult.Terminate
+        assert visited_details == ["child1"]
+
+    # ----------------------------------------------------------------------
+    def test_AcceptSkipsRemainingDetailsWhenDetailMethodReturnsSkipDetailsForParentExpressionDetails(self):
+        region = _CreateRegion()
+        child1 = TerminalExpression[int](region, 1)
+        child2 = TerminalExpression[int](region, 2)
+        parent = _ParentExpressionDetails(region, child1, child2)
+
+        visited_details: list[str] = []
+
+        class TestVisitor(ExpressionVisitorHelper):
+            @contextmanager
+            def On_ParentExpressionDetails(self, expression: _ParentExpressionDetails):
+                yield VisitResult.Continue
+
+            def On_ParentExpressionDetails__child1(
+                self,
+                expression: TerminalExpression,
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                visited_details.append("child1")
+                return VisitResult.SkipDetails
+
+            def On_ParentExpressionDetails__child2(
+                self,
+                expression: TerminalExpression,
+                *,
+                include_disabled: bool,
+            ) -> VisitResult:
+                visited_details.append("child2")
+                return VisitResult.Continue
+
+        visitor = TestVisitor()
+        result = parent.Accept(visitor)
+
+        assert result == VisitResult.Continue
+        assert visited_details == ["child1"]
 
 
 # ----------------------------------------------------------------------

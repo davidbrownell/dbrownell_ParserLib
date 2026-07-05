@@ -122,12 +122,13 @@ class ExpressionVisitorHelper(ExpressionVisitor):
         self,
         method_name: str,
     ) -> object:
-        if method_name.endswith("Expression"):
-            return self.__class__._DefaultExpressionMethod  # noqa: SLF001
+        if method_name.startswith("On"):
+            index = method_name.find("__")
+            if index != -1 and not method_name.endswith("__"):
+                return types.MethodType(self.__class__._DefaultDetailMethod, self)  # noqa: SLF001
 
-        index = method_name.find("Expression__")
-        if index != -1 and index + len("Expression__") + 1 < len(method_name):
-            return types.MethodType(self.__class__._DefaultDetailMethod, self)  # noqa: SLF001
+            if index == -1:
+                return self.__class__._DefaultExpressionMethod  # noqa: SLF001
 
         raise AttributeError(method_name)
 
