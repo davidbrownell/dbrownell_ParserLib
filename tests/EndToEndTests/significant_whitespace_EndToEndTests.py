@@ -14,10 +14,7 @@ from dbrownell_Common.Streams.DoneManager import DoneManager
 from dbrownell_Common.TestHelpers.StreamTestHelpers import GenerateDoneManagerAndContent
 
 from dbrownell_ParserLib.antlr.antlr_parser import AntlrParser, CreateAntlrParser
-from dbrownell_ParserLib.antlr.antlr_visitor_mixins import (
-    AntlrVisitorMixinBase,
-    SignificantWhitespaceAntlrVisitorMixin,
-)
+from dbrownell_ParserLib.antlr.antlr_visitor_mixin import AntlrVisitorMixin
 from dbrownell_ParserLib.errors import Error, ErrorException
 from dbrownell_ParserLib.terminal_expression import Expression, TerminalExpression
 
@@ -34,28 +31,7 @@ def parser():
         from significant_whitespaceVisitor import significant_whitespaceVisitor as Visitor  # ty: ignore[unresolved-import]
 
     # ----------------------------------------------------------------------
-    class MyVisitor(SignificantWhitespaceAntlrVisitorMixin, Visitor):
-        # ----------------------------------------------------------------------
-        def __init__(
-            self,
-            filename: Path,
-            on_progress_func: Callable[[int], None],
-            *,
-            is_included_file: bool,
-        ) -> None:
-            AntlrVisitorMixinBase.__init__(
-                self,
-                filename,
-                on_progress_func,
-                is_included_file=is_included_file,
-            )
-            SignificantWhitespaceAntlrVisitorMixin.__init__(
-                self,
-                Parser.DEDENT,
-                Parser.NEWLINE,
-                "newLine",
-            )
-
+    class MyVisitor(AntlrVisitorMixin, Visitor):
         # ----------------------------------------------------------------------
         def visitAtom_expr(self, ctx: Parser.Atom_exprContext):
             value: str = ctx.getText()

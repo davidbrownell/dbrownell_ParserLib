@@ -34,8 +34,9 @@
 - **Visitor Pattern**: Flexible visitor pattern implementation with fine-grained traversal control
 - **Error Handling**: Rich error objects that associate messages with source locations and extract Python exception tracebacks
 - **Multi-threaded Parsing**: Built-in support for parsing multiple files concurrently
-- **Workspace Support**: Parse entire directory trees with customizable file filtering
-- **Whitespace Handling**: Mixins for both insignificant and significant whitespace grammars (e.g., Python-like indentation)
+- **Workspace Support**: Parse translation units organized across multiple workspace roots
+- **Whitespace Handling**: A single visitor mixin supports both insignificant and significant whitespace grammars (e.g., Python-like indentation); grammars that define `INDENT`/`DEDENT` tokens are detected automatically
+- **Multiline String Extraction**: Extract multiline string content that must be vertically aligned with its opening token, with detailed errors on misalignment
 
 ### How to use `dbrownell_ParserLib`
 
@@ -79,7 +80,7 @@ Implement a visitor that converts ANTLR parse trees to Expression objects:
 ```python
 from dataclasses import dataclass
 
-from dbrownell_ParserLib.antlr.antlr_visitor_mixins import InsignificantWhitespaceAntlrVisitorMixin
+from dbrownell_ParserLib.antlr.antlr_visitor_mixin import AntlrVisitorMixin
 from dbrownell_ParserLib.expression import Expression
 from dbrownell_ParserLib.terminal_expression import TerminalExpression
 
@@ -98,8 +99,10 @@ class BinaryExpression(Expression):
         yield "right", self.right
 
 
-class CalculatorVisitor(InsignificantWhitespaceAntlrVisitorMixin, GeneratedVisitor):
-    def visitExpr(self, ctx):
+class CalculatorVisitor(AntlrVisitorMixin, GeneratedVisitor):
+    def visitBinaryOp(self, ctx):
+        operator = TerminalExpression[str](self.CreateRegion(ctx.children[1]), ctx.children[1].getText())
+
         children = self.GetChildren(ctx)
         assert len(children) == 2, children
 
@@ -107,20 +110,19 @@ class CalculatorVisitor(InsignificantWhitespaceAntlrVisitorMixin, GeneratedVisit
             BinaryExpression(
                 self.CreateRegion(ctx),
                 children[0],
-                TerminalExpression[str](self.CreateRegion(ctx.children[1]), ctx.children[1].getText()),
-
+                operator,
                 children[1],
             )
         )
 
     def visitNumber(self, ctx):
         self._stack.append(
-            TerminalExpression(self.CreateRegion(ctx), int(ctx.getText()))
+            TerminalExpression[int](self.CreateRegion(ctx), int(ctx.getText()))
         )
 ```
 
 #### 4. Create Parser Instance
-Use `CreateAntlrParser` to build a callable parser:
+Use `CreateAntlrParser` to build a callable parser. Grammars that define `INDENT` and `DEDENT` tokens (significant whitespace) are detected automatically; no additional configuration is required.
 
 ```python
 from dbrownell_ParserLib.antlr.antlr_parser import CreateAntlrParser
