@@ -14,10 +14,7 @@ from dbrownell_Common.Streams.DoneManager import DoneManager
 from dbrownell_Common.TestHelpers.StreamTestHelpers import GenerateDoneManagerAndContent
 
 from dbrownell_ParserLib.antlr.antlr_parser import AntlrParser, CreateAntlrParser
-from dbrownell_ParserLib.antlr.antlr_visitor_mixins import (
-    AntlrVisitorMixinBase,
-    InsignificantWhitespaceAntlrVisitorMixin,
-)
+from dbrownell_ParserLib.antlr.antlr_visitor_mixin import AntlrVisitorMixin
 from dbrownell_ParserLib.errors import Error
 from dbrownell_ParserLib.terminal_expression import Expression, TerminalExpression
 
@@ -34,7 +31,7 @@ def parser():
         from insignificant_whitespaceVisitor import insignificant_whitespaceVisitor as Visitor  # ty: ignore[unresolved-import]
 
     # ----------------------------------------------------------------------
-    class MyVisitor(InsignificantWhitespaceAntlrVisitorMixin, Visitor):
+    class MyVisitor(AntlrVisitorMixin, Visitor):
         # ----------------------------------------------------------------------
         def visitExpr(self, ctx: Parser.ExprContext):
             if len(ctx.children) != 3:

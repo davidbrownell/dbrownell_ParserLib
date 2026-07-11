@@ -87,6 +87,9 @@ def CreateMockVisitor(
     on_progress_func: Callable[[int], None],
     *,
     is_included_file: bool,
+    parser_newline_string: str | None,
+    indent_token_type: int | None,
+    dedent_token_type: int | None,
 ) -> MockVisitor:
     return MockVisitor(filename, on_progress_func, is_included_file=is_included_file)
 
@@ -543,6 +546,9 @@ class TestVisitorCreation:
             on_progress_func: Callable[[int], None],
             *,
             is_included_file: bool,
+            parser_newline_string: str | None,
+            indent_token_type: int | None,
+            dedent_token_type: int | None,
         ) -> MockVisitor:
             nonlocal received_filename
             received_filename = filename
@@ -583,6 +589,9 @@ class TestVisitorCreation:
             on_progress_func: Callable[[int], None],
             *,
             is_included_file: bool,
+            parser_newline_string: str | None,
+            indent_token_type: int | None,
+            dedent_token_type: int | None,
         ) -> MockVisitor:
             nonlocal received_is_included
             received_is_included = is_included_file
@@ -623,6 +632,9 @@ class TestErrorHandling:
             on_progress_func: Callable[[int], None],
             *,
             is_included_file: bool,
+            parser_newline_string: str | None,
+            indent_token_type: int | None,
+            dedent_token_type: int | None,
         ) -> MockVisitor:
             raise RuntimeError("Parsing failed")
 
@@ -660,6 +672,9 @@ class TestErrorHandling:
             on_progress_func: Callable[[int], None],
             *,
             is_included_file: bool,
+            parser_newline_string: str | None,
+            indent_token_type: int | None,
+            dedent_token_type: int | None,
         ) -> MockVisitor:
             raise RuntimeError("Parsing failed")
 
@@ -695,6 +710,9 @@ class TestErrorHandling:
             on_progress_func: Callable[[int], None],
             *,
             is_included_file: bool,
+            parser_newline_string: str | None,
+            indent_token_type: int | None,
+            dedent_token_type: int | None,
         ) -> MockVisitor:
             error = Error(
                 "Syntax error in file",
