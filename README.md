@@ -29,7 +29,7 @@
 
 ### Key Features
 - **ANTLR Integration**: Streamlined wrapper around ANTLR for Python, handling grammar compilation and parser generation
-- **AST Representation**: Expression-based AST nodes with automatic parent-child relationship management
+- **AST Representation**: Element-based AST nodes with automatic parent-child relationship management
 - **Source Location Tracking**: Every AST node tracks its source file location (filename, line, column ranges) for detailed error reporting
 - **Visitor Pattern**: Flexible visitor pattern implementation with fine-grained traversal control
 - **Error Handling**: Rich error objects that associate messages with source locations and extract Python exception tracebacks
@@ -75,23 +75,23 @@ BuildAntlrGrammar(
 ```
 
 #### 3. Create Custom Visitor
-Implement a visitor that converts ANTLR parse trees to Expression objects:
+Implement a visitor that converts ANTLR parse trees to Element objects:
 
 ```python
 from dataclasses import dataclass
 
 from dbrownell_ParserLib.antlr.antlr_visitor_mixin import AntlrVisitorMixin
-from dbrownell_ParserLib.expression import Expression
-from dbrownell_ParserLib.terminal_expression import TerminalExpression
+from dbrownell_ParserLib.element import Element
+from dbrownell_ParserLib.terminal_element import TerminalElement
 
 from CalculatorVisitor import CalculatorVisitor as GeneratedVisitor
 
 
 @dataclass(eq=False)
-class BinaryExpression(Expression):
-    left: Expression
-    operator: TerminalExpression[str]
-    right: Expression
+class BinaryExpression(Element):
+    left: Element
+    operator: TerminalElement[str]
+    right: Element
 
     def _GenerateAcceptDetails(self):
         yield "left", self.left
@@ -101,7 +101,7 @@ class BinaryExpression(Expression):
 
 class CalculatorVisitor(AntlrVisitorMixin, GeneratedVisitor):
     def visitBinaryOp(self, ctx):
-        operator = TerminalExpression[str](self.CreateRegion(ctx.children[1]), ctx.children[1].getText())
+        operator = TerminalElement[str](self.CreateRegion(ctx.children[1]), ctx.children[1].getText())
 
         children = self.GetChildren(ctx)
         assert len(children) == 2, children
@@ -117,7 +117,7 @@ class CalculatorVisitor(AntlrVisitorMixin, GeneratedVisitor):
 
     def visitNumber(self, ctx):
         self._stack.append(
-            TerminalExpression[int](self.CreateRegion(ctx), int(ctx.getText()))
+            TerminalElement[int](self.CreateRegion(ctx), int(ctx.getText()))
         )
 ```
 
@@ -165,12 +165,12 @@ Use the visitor pattern to process your AST:
 ```python
 from contextlib import contextmanager
 
-from dbrownell_ParserLib.visitors import ExpressionVisitorHelper, VisitResult
+from dbrownell_ParserLib.visitors import ElementVisitorHelper, VisitResult
 
 
-class EvaluatorVisitor(ExpressionVisitorHelper):
+class EvaluatorVisitor(ElementVisitorHelper):
     @contextmanager
-    def OnBinaryExpression(self, expression):
+    def OnBinaryExpression(self, element):
         # Process binary expressions
         yield VisitResult.Continue
 

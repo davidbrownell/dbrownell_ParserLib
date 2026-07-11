@@ -7,11 +7,11 @@ from typing import override
 
 import pytest
 
-from dbrownell_ParserLib.expression import Expression
+from dbrownell_ParserLib.element import Element
 from dbrownell_ParserLib.location import Location
 from dbrownell_ParserLib.region import Region
-from dbrownell_ParserLib.terminal_expression import TerminalExpression
-from dbrownell_ParserLib.visitors import ExpressionVisitor, ExpressionVisitorHelper, VisitResult
+from dbrownell_ParserLib.terminal_element import TerminalElement
+from dbrownell_ParserLib.visitors import ElementVisitor, ElementVisitorHelper, VisitResult
 
 
 # ----------------------------------------------------------------------
@@ -69,39 +69,39 @@ class TestVisitResult:
 
 
 # ----------------------------------------------------------------------
-class TestExpressionVisitorHelper:
+class TestElementVisitorHelper:
     # ----------------------------------------------------------------------
-    def test_OnExpressionYieldsContinue(self):
+    def test_OnElementYieldsContinue(self):
         region = _CreateRegion()
-        expr = TerminalExpression[int](region, 42)
-        visitor = ExpressionVisitorHelper()
+        element = TerminalElement[int](region, 42)
+        visitor = ElementVisitorHelper()
 
-        with visitor.OnExpression(expr) as result:
+        with visitor.OnElement(element) as result:
             assert result == VisitResult.Continue
 
     # ----------------------------------------------------------------------
-    def test_OnExpressionDetailsYieldsContinue(self):
+    def test_OnElementDetailsYieldsContinue(self):
         region = _CreateRegion()
-        expr = TerminalExpression[int](region, 42)
-        visitor = ExpressionVisitorHelper()
+        element = TerminalElement[int](region, 42)
+        visitor = ElementVisitorHelper()
 
-        with visitor.OnExpressionDetails(expr) as result:
+        with visitor.OnElementDetails(element) as result:
             assert result == VisitResult.Continue
 
     # ----------------------------------------------------------------------
-    def test_OnExpressionChildrenYieldsContinue(self):
+    def test_OnElementChildrenYieldsContinue(self):
         region = _CreateRegion()
-        expr = TerminalExpression[int](region, 42)
-        visitor = ExpressionVisitorHelper()
+        element = TerminalElement[int](region, 42)
+        visitor = ElementVisitorHelper()
 
-        with visitor.OnExpressionChildren(expr, "children", []) as result:
+        with visitor.OnElementChildren(element, "children", []) as result:
             assert result == VisitResult.Continue
 
     # ----------------------------------------------------------------------
-    def test_GetAttrReturnsDefaultMethodForExpressionSuffix(self):
-        visitor = ExpressionVisitorHelper()
+    def test_GetAttrReturnsDefaultMethodForElementSuffix(self):
+        visitor = ElementVisitorHelper()
 
-        method = getattr(visitor, "OnSomeExpression")
+        method = getattr(visitor, "OnSomeElement")
 
         with method(None) as result:
             assert result == VisitResult.Continue
@@ -109,86 +109,86 @@ class TestExpressionVisitorHelper:
     # ----------------------------------------------------------------------
     def test_GetAttrReturnsDefaultMethodForDetailPattern(self):
         region = _CreateRegion()
-        expr = TerminalExpression[int](region, 42)
-        visitor = ExpressionVisitorHelper()
+        element = TerminalElement[int](region, 42)
+        visitor = ElementVisitorHelper()
 
-        method = getattr(visitor, "OnSomeExpression__some_detail")
+        method = getattr(visitor, "OnSomeElement__some_detail")
 
-        result = method([expr], include_disabled=False)
+        result = method([element], include_disabled=False)
         assert result == VisitResult.Continue
 
     # ----------------------------------------------------------------------
     def test_GetAttrRaisesAttributeErrorForUnknownAttribute(self):
-        visitor = ExpressionVisitorHelper()
+        visitor = ElementVisitorHelper()
 
         with pytest.raises(AttributeError, match="unknown_method"):
             getattr(visitor, "unknown_method")
 
     # ----------------------------------------------------------------------
     def test_GetAttrRaisesAttributeErrorForPartialDetailPattern(self):
-        visitor = ExpressionVisitorHelper()
+        visitor = ElementVisitorHelper()
 
-        with pytest.raises(AttributeError, match="OnSomeExpression__"):
-            getattr(visitor, "OnSomeExpression__")
+        with pytest.raises(AttributeError, match="OnSomeElement__"):
+            getattr(visitor, "OnSomeElement__")
 
     # ----------------------------------------------------------------------
-    def test_DefaultDetailMethodAcceptsListOfExpressions(self):
+    def test_DefaultDetailMethodAcceptsListOfElements(self):
         region = _CreateRegion()
-        expr1 = TerminalExpression[int](region, 1)
-        expr2 = TerminalExpression[int](region, 2)
-        visitor = ExpressionVisitorHelper()
+        element1 = TerminalElement[int](region, 1)
+        element2 = TerminalElement[int](region, 2)
+        visitor = ElementVisitorHelper()
 
-        method = getattr(visitor, "OnSomeExpression__detail")
+        method = getattr(visitor, "OnSomeElement__detail")
 
-        result = method([expr1, expr2], include_disabled=False)
+        result = method([element1, element2], include_disabled=False)
         assert result == VisitResult.Continue
 
     # ----------------------------------------------------------------------
-    def test_DefaultDetailMethodAcceptsSingleExpression(self):
+    def test_DefaultDetailMethodAcceptsSingleElement(self):
         region = _CreateRegion()
-        expr = TerminalExpression[int](region, 42)
-        visitor = ExpressionVisitorHelper()
+        element = TerminalElement[int](region, 42)
+        visitor = ElementVisitorHelper()
 
-        method = getattr(visitor, "OnSomeExpression__detail")
+        method = getattr(visitor, "OnSomeElement__detail")
 
-        result = method(expr, include_disabled=False)
+        result = method(element, include_disabled=False)
         assert result == VisitResult.Continue
 
 
 # ----------------------------------------------------------------------
 @dataclass
-class _ParentExpression(Expression):
-    """Expression with children for testing visitor traversal."""
+class _ParentElement(Element):
+    """Element with children for testing visitor traversal."""
 
-    children: list[Expression]
+    children: list[Element]
 
     # ----------------------------------------------------------------------
     @override
-    def _GetAcceptChildren(self) -> Expression._GetAcceptChildrenResultType:
+    def _GetAcceptChildren(self) -> Element._GetAcceptChildrenResultType:
         if not self.children:
             return None
         return ("children", self.children)
 
 
 # ----------------------------------------------------------------------
-class TestExpressionVisitorHelperDefaultDetailMethodTermination:
+class TestElementVisitorHelperDefaultDetailMethodTermination:
     # ----------------------------------------------------------------------
     def test_DefaultDetailMethodTerminatesWhenChildReturnsTerminate(self):
         region = _CreateRegion()
-        child1 = TerminalExpression[int](region, 1)
-        child2 = TerminalExpression[int](region, 2)
+        child1 = TerminalElement[int](region, 1)
+        child2 = TerminalElement[int](region, 2)
 
         termination_count = 0
 
-        class TerminatingVisitor(ExpressionVisitorHelper):
+        class TerminatingVisitor(ElementVisitorHelper):
             @contextmanager
-            def OnTerminalExpression(self, expression: TerminalExpression):
+            def OnTerminalElement(self, element: TerminalElement):
                 nonlocal termination_count
                 termination_count += 1
                 yield VisitResult.Terminate
 
         visitor = TerminatingVisitor()
-        method = getattr(visitor, "OnSomeExpression__detail")
+        method = getattr(visitor, "OnSomeElement__detail")
 
         result = method([child1, child2], include_disabled=False)
 
@@ -196,23 +196,23 @@ class TestExpressionVisitorHelperDefaultDetailMethodTermination:
         assert termination_count == 1
 
     # ----------------------------------------------------------------------
-    def test_DefaultDetailMethodContinuesThroughAllExpressionsWhenNoTerminate(self):
+    def test_DefaultDetailMethodContinuesThroughAllElementsWhenNoTerminate(self):
         region = _CreateRegion()
-        child1 = TerminalExpression[int](region, 1)
-        child2 = TerminalExpression[int](region, 2)
-        child3 = TerminalExpression[int](region, 3)
+        child1 = TerminalElement[int](region, 1)
+        child2 = TerminalElement[int](region, 2)
+        child3 = TerminalElement[int](region, 3)
 
         visited_count = 0
 
-        class CountingVisitor(ExpressionVisitorHelper):
+        class CountingVisitor(ElementVisitorHelper):
             @contextmanager
-            def OnTerminalExpression(self, expression: TerminalExpression):
+            def OnTerminalElement(self, element: TerminalElement):
                 nonlocal visited_count
                 visited_count += 1
                 yield VisitResult.Continue
 
         visitor = CountingVisitor()
-        method = getattr(visitor, "OnSomeExpression__detail")
+        method = getattr(visitor, "OnSomeElement__detail")
 
         result = method([child1, child2, child3], include_disabled=False)
 
