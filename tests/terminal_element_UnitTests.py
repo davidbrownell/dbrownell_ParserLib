@@ -1,4 +1,4 @@
-"""Unit tests for TerminalExpression class."""
+"""Unit tests for TerminalElement class."""
 
 from pathlib import Path
 
@@ -6,7 +6,7 @@ import pytest
 
 from dbrownell_ParserLib.location import Location
 from dbrownell_ParserLib.region import Region
-from dbrownell_ParserLib.terminal_expression import TerminalExpression
+from dbrownell_ParserLib.terminal_element import TerminalElement
 
 
 # ----------------------------------------------------------------------
@@ -19,106 +19,106 @@ def _CreateRegion() -> Region:
 
 
 # ----------------------------------------------------------------------
-class TestTerminalExpressionConstruction:
+class TestTerminalElementConstruction:
     # ----------------------------------------------------------------------
     def test_IntValue(self):
         region = _CreateRegion()
-        expr = TerminalExpression[int](region, 42)
+        element = TerminalElement[int](region, 42)
 
-        assert expr.value == 42
-        assert expr.region__ == region
+        assert element.value == 42
+        assert element.region__ == region
 
     # ----------------------------------------------------------------------
     def test_StrValue(self):
         region = _CreateRegion()
-        expr = TerminalExpression[str](region, "hello")
+        element = TerminalElement[str](region, "hello")
 
-        assert expr.value == "hello"
-        assert expr.region__ == region
+        assert element.value == "hello"
+        assert element.region__ == region
 
     # ----------------------------------------------------------------------
     def test_BoolValue(self):
         region = _CreateRegion()
-        expr = TerminalExpression[bool](region, True)
+        element = TerminalElement[bool](region, True)
 
-        assert expr.value is True
+        assert element.value is True
 
     # ----------------------------------------------------------------------
     def test_FloatValue(self):
         region = _CreateRegion()
-        expr = TerminalExpression[float](region, 3.14)
+        element = TerminalElement[float](region, 3.14)
 
-        assert expr.value == 3.14
+        assert element.value == 3.14
 
     # ----------------------------------------------------------------------
     def test_NoneValue(self):
         region = _CreateRegion()
-        expr = TerminalExpression[None](region, None)
+        element = TerminalElement[None](region, None)
 
-        assert expr.value is None
+        assert element.value is None
 
     # ----------------------------------------------------------------------
     def test_ListValue(self):
         region = _CreateRegion()
         value = [1, 2, 3]
-        expr = TerminalExpression[list](region, value)
+        element = TerminalElement[list](region, value)
 
-        assert expr.value == [1, 2, 3]
+        assert element.value == [1, 2, 3]
 
 
 # ----------------------------------------------------------------------
-class TestTerminalExpressionUniqueId:
+class TestTerminalElementUniqueId:
     # ----------------------------------------------------------------------
     def test_UniqueIdStructure(self):
         region = _CreateRegion()
-        expr = TerminalExpression[int](region, 42)
+        element = TerminalElement[int](region, 42)
 
-        assert expr.unique_id__ == ("TerminalExpression", 42)
+        assert element.unique_id__ == ("TerminalElement", 42)
 
     # ----------------------------------------------------------------------
     def test_UniqueIdWithStringValue(self):
         region = _CreateRegion()
-        expr = TerminalExpression[str](region, "hello")
+        element = TerminalElement[str](region, "hello")
 
-        assert expr.unique_id__ == ("TerminalExpression", "hello")
+        assert element.unique_id__ == ("TerminalElement", "hello")
 
     # ----------------------------------------------------------------------
     def test_SameValuesSameUniqueId(self):
         region = _CreateRegion()
-        expr1 = TerminalExpression[int](region, 42)
-        expr2 = TerminalExpression[int](region, 42)
+        element1 = TerminalElement[int](region, 42)
+        element2 = TerminalElement[int](region, 42)
 
-        assert expr1.unique_id__ == expr2.unique_id__
+        assert element1.unique_id__ == element2.unique_id__
 
     # ----------------------------------------------------------------------
     def test_DifferentValuesDifferentUniqueId(self):
         region = _CreateRegion()
-        expr1 = TerminalExpression[int](region, 42)
-        expr2 = TerminalExpression[int](region, 43)
+        element1 = TerminalElement[int](region, 42)
+        element2 = TerminalElement[int](region, 43)
 
-        assert expr1.unique_id__ != expr2.unique_id__
+        assert element1.unique_id__ != element2.unique_id__
 
 
 # ----------------------------------------------------------------------
-class TestTerminalExpressionEquality:
+class TestTerminalElementEquality:
     # ----------------------------------------------------------------------
-    def test_NotEqualNonExpression(self):
+    def test_NotEqualNonElement(self):
         region = _CreateRegion()
-        expr = TerminalExpression[int](region, 42)
+        element = TerminalElement[int](region, 42)
 
-        assert expr != "not an expression"
-        assert expr != 42
-        assert expr != None
+        assert element != "not an element"
+        assert element != 42
+        assert element != None
 
 
 # ----------------------------------------------------------------------
-class TestTerminalExpressionClone:
+class TestTerminalElementClone:
     # ----------------------------------------------------------------------
     def test_ClonePreservesValue(self):
         region = _CreateRegion()
-        expr = TerminalExpression[int](region, 42)
+        element = TerminalElement[int](region, 42)
 
-        cloned = expr.Clone()
+        cloned = element.Clone()
 
         assert cloned.value == 42
         assert cloned.region__ == region
@@ -126,12 +126,12 @@ class TestTerminalExpressionClone:
     # ----------------------------------------------------------------------
     def test_CloneWithOverriddenValue(self):
         region = _CreateRegion()
-        expr = TerminalExpression[int](region, 42)
+        element = TerminalElement[int](region, 42)
 
-        cloned = expr.Clone(value=100)
+        cloned = element.Clone(value=100)
 
         assert cloned.value == 100
-        assert expr.value == 42
+        assert element.value == 42
 
     # ----------------------------------------------------------------------
     def test_CloneWithOverriddenRegion(self):
@@ -141,18 +141,18 @@ class TestTerminalExpressionClone:
             begin=Location(line=5, column=5),
             end=Location(line=5, column=15),
         )
-        expr = TerminalExpression[int](region1, 42)
+        element = TerminalElement[int](region1, 42)
 
-        cloned = expr.Clone(region__=region2)
+        cloned = element.Clone(region__=region2)
 
         assert cloned.region__ == region2
-        assert expr.region__ == region1
+        assert element.region__ == region1
 
     # ----------------------------------------------------------------------
     def test_CloneCreatesNewInstance(self):
         region = _CreateRegion()
-        expr = TerminalExpression[int](region, 42)
+        element = TerminalElement[int](region, 42)
 
-        cloned = expr.Clone()
+        cloned = element.Clone()
 
-        assert expr is not cloned
+        assert element is not cloned

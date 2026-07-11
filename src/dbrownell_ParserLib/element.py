@@ -8,7 +8,7 @@ from typing import Self, TYPE_CHECKING
 
 from dbrownell_Common.Types import extension, override
 
-from dbrownell_ParserLib.visitors import ExpressionVisitor, ExpressionVisitorHelper, VisitResult
+from dbrownell_ParserLib.visitors import ElementVisitor, ElementVisitorHelper, VisitResult
 
 if TYPE_CHECKING:
     from dbrownell_ParserLib.region import Region
@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 
 # ----------------------------------------------------------------------
 @dataclass(eq=False)
-class Expression:
-    """Abstract base class for all expressions encountered during the parsing process."""
+class Element:
+    """Abstract base class for all elements encountered during the parsing process."""
 
     # ----------------------------------------------------------------------
     # |
@@ -27,7 +27,7 @@ class Expression:
     region__: Region
     finalize: InitVar[bool] = field(kw_only=True, default=True)
 
-    parent__: weakref.ref[Expression] | None = field(init=False)
+    parent__: weakref.ref[Element] | None = field(init=False)
 
     _unique_id: tuple[object, ...] | None = field(init=False)
     _disabled: bool = field(init=False)
@@ -52,14 +52,14 @@ class Expression:
     # ----------------------------------------------------------------------
     @property
     def unique_id__(self) -> tuple[object, ...]:
-        """A unique identifier for this expression, which can be used for caching and other purposes."""
+        """A unique identifier for this element, which can be used for caching and other purposes."""
 
         assert self._unique_id is not None
         return self._unique_id
 
     @property
     def is_disabled__(self) -> bool:
-        """Whether this expression is disabled, which can be used for caching and other purposes."""
+        """Whether this element is disabled, which can be used for caching and other purposes."""
 
         return self._disabled
 
@@ -69,21 +69,21 @@ class Expression:
 
     # ----------------------------------------------------------------------
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Expression):
+        if not isinstance(other, Element):
             return False
 
         return self.unique_id__ == other.unique_id__
 
     # ----------------------------------------------------------------------
     def __ne__(self, other: object) -> bool:
-        if not isinstance(other, Expression):
+        if not isinstance(other, Element):
             return True
 
         return self.unique_id__ != other.unique_id__
 
     # ----------------------------------------------------------------------
     def Clone(self, **kwargs) -> Self:
-        """Create a copy of this expression, optionally overriding some of its fields."""
+        """Create a copy of this element, optionally overriding some of its fields."""
 
         for field_value in fields(self.__class__):
             if field_value.init and field_value.name != "finalize" and field_value.name not in kwargs:
@@ -93,7 +93,7 @@ class Expression:
 
     # ----------------------------------------------------------------------
     def Disable(self) -> None:
-        """Disable this expression so that it doesn't participate in visitation."""
+        """Disable this element so that it doesn't participate in visitation."""
 
         assert self.is_disabled__ is False
         self._disabled = True
@@ -101,20 +101,20 @@ class Expression:
     # ----------------------------------------------------------------------
     def Accept(  # noqa: C901
         self,
-        visitor: ExpressionVisitor,
+        visitor: ElementVisitor,
         *,
         include_disabled: bool = False,
     ) -> VisitResult:
-        """Accept a visitor for visitation of this expression and its children (if any)."""
+        """Accept a visitor for visitation of this element and its children (if any)."""
 
         if self.is_disabled__ and not include_disabled:
             return VisitResult.Continue
 
-        with visitor.OnExpression(self) as expression_visit_result:
-            if expression_visit_result & VisitResult.Terminate:
-                return expression_visit_result
+        with visitor.OnElement(self) as element_visit_result:
+            if element_visit_result & VisitResult.Terminate:
+                return element_visit_result
 
-            if expression_visit_result & VisitResult.SkipAll:
+            if element_visit_result & VisitResult.SkipAll:
                 return VisitResult.Continue
 
             method_name = f"On{self.__class__.__name__}"
@@ -131,7 +131,7 @@ class Expression:
                     all_details = list(self._GenerateAcceptDetails())
 
                     if all_details:
-                        with visitor.OnExpressionDetails(self) as details_visit_result:
+                        with visitor.OnElementDetails(self) as details_visit_result:
                             if details_visit_result & VisitResult.Terminate:
                                 return details_visit_result
 
@@ -161,7 +161,7 @@ class Expression:
                     if children_result:
                         children_name, children = children_result
 
-                        with visitor.OnExpressionChildren(
+                        with visitor.OnElementChildren(
                             self,
                             children_name,
                             children,
@@ -210,9 +210,9 @@ class Expression:
     # ----------------------------------------------------------------------
     @extension
     def _GetTerminalUniqueId(self) -> tuple[object, ...]:
-        """Get a unique identifier for this expression that doesn't include any of its children."""
+        """Get a unique identifier for this element that doesn't include any of its children."""
 
-        msg = f"This functionality should be implemented by a terminal expression (i.e. an expression that doesn't have any children or expression details) [{self.__class__.__name__}]"
+        msg = f"This functionality should be implemented by a terminal element (i.e. an element that doesn't have any children or element details) [{self.__class__.__name__}]"
         raise Exception(msg)
 
     # ----------------------------------------------------------------------
@@ -234,15 +234,15 @@ class Expression:
 # |  Private Types
 # |
 # ----------------------------------------------------------------------
-class _FinalizeVisitor(ExpressionVisitorHelper):
-    """Visitor that visits the children of an expression, but not anything below that; it sets the unique_id__ of the target expression and sets its children's parent attribute to the correct value."""
+class _FinalizeVisitor(ElementVisitorHelper):
+    """Visitor that visits the children of an element, but not anything below that; it sets the unique_id__ of the target element and sets its children's parent attribute to the correct value."""
 
     # ----------------------------------------------------------------------
     def __init__(
         self,
-        root_expression: Expression,
+        root_element: Element,
     ) -> None:
-        self._target_expression = root_expression
+        self._target_element = root_element
 
         self._child_unique_ids: list[tuple[object, ...]] = []
         self._result: tuple[object, ...] | None = None
@@ -256,27 +256,27 @@ class _FinalizeVisitor(ExpressionVisitorHelper):
     # ----------------------------------------------------------------------
     @override
     @contextmanager
-    def OnExpression(
+    def OnElement(
         self,
-        expression: Expression,
+        element: Element,
     ) -> Generator[VisitResult]:
-        # This code will visit the children of the target expression, but not anything below that.
-        if expression is self._target_expression:
+        # This code will visit the children of the target element, but not anything below that.
+        if element is self._target_element:
             yield VisitResult.Continue
 
             if not self._child_unique_ids:
-                result = expression._GetTerminalUniqueId()  # noqa: SLF001
+                result = element._GetTerminalUniqueId()  # noqa: SLF001
             else:
                 result = tuple(self._child_unique_ids)
 
             assert self._result is None
-            self._result = (type(expression).__name__, *result)
+            self._result = (type(element).__name__, *result)
 
             return
 
-        expression.parent__ = weakref.ref(self._target_expression)
+        element.parent__ = weakref.ref(self._target_element)
 
-        self._child_unique_ids.append(expression.unique_id__)
+        self._child_unique_ids.append(element.unique_id__)
 
-        # Do not parse the grandchildren of the original target expression
+        # Do not parse the grandchildren of the original target element
         yield VisitResult.SkipChildren

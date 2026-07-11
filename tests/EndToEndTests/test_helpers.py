@@ -5,8 +5,8 @@ from typing import override, TextIO, TYPE_CHECKING
 from dbrownell_Common.ContextlibEx import ExitStack
 from dbrownell_Common.Streams.StreamDecorator import StreamDecorator
 
-from dbrownell_ParserLib.expression import Expression, ExpressionVisitorHelper, VisitResult
-from dbrownell_ParserLib.terminal_expression import TerminalExpression
+from dbrownell_ParserLib.element import Element, ElementVisitorHelper, VisitResult
+from dbrownell_ParserLib.terminal_element import TerminalElement
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -14,17 +14,17 @@ if TYPE_CHECKING:
 
 # ----------------------------------------------------------------------
 @dataclass(eq=False)
-class BinaryExpression(Expression):
+class BinaryExpression(Element):
     # ----------------------------------------------------------------------
-    left: Expression
-    operator: TerminalExpression[str]
-    right: Expression
+    left: Element
+    operator: TerminalElement[str]
+    right: Element
 
     # ----------------------------------------------------------------------
     # ----------------------------------------------------------------------
     # ----------------------------------------------------------------------
     @override
-    def _GenerateAcceptDetails(self) -> Expression._GenerateAcceptDetailsResultType:
+    def _GenerateAcceptDetails(self) -> Element._GenerateAcceptDetailsResultType:
         yield "left", self.left
         yield "operator", self.operator
         yield "right", self.right
@@ -32,22 +32,22 @@ class BinaryExpression(Expression):
 
 # ----------------------------------------------------------------------
 @dataclass(eq=False)
-class UnaryExpression(Expression):
+class UnaryExpression(Element):
     # ----------------------------------------------------------------------
-    operator: TerminalExpression[str]
-    operand: Expression
+    operator: TerminalElement[str]
+    operand: Element
 
     # ----------------------------------------------------------------------
     # ----------------------------------------------------------------------
     # ----------------------------------------------------------------------
     @override
-    def _GenerateAcceptDetails(self) -> Expression._GenerateAcceptDetailsResultType:
+    def _GenerateAcceptDetails(self) -> Element._GenerateAcceptDetailsResultType:
         yield "operator", self.operator
         yield "operand", self.operand
 
 
 # ----------------------------------------------------------------------
-class OutputVisitor(ExpressionVisitorHelper):
+class OutputVisitor(ElementVisitorHelper):
     # ----------------------------------------------------------------------
     def __init__(self, output: TextIO):
         self._streams: list[StreamDecorator] = [
@@ -56,11 +56,11 @@ class OutputVisitor(ExpressionVisitorHelper):
 
     # ----------------------------------------------------------------------
     @contextmanager
-    def OnExpression(self, expression: Expression) -> Generator[VisitResult]:
-        self._streams[-1].write(f"{expression.__class__.__name__}, {expression.region__.begin}")
+    def OnElement(self, element: Element) -> Generator[VisitResult]:
+        self._streams[-1].write(f"{element.__class__.__name__}, {element.region__.begin}")
 
-        if expression.region__.begin != expression.region__.end:
-            self._streams[-1].write(f" - {expression.region__.end}")
+        if element.region__.begin != element.region__.end:
+            self._streams[-1].write(f" - {element.region__.end}")
 
         self._streams[-1].write("\n")
 
@@ -68,13 +68,13 @@ class OutputVisitor(ExpressionVisitorHelper):
 
     # ----------------------------------------------------------------------
     @contextmanager
-    def OnBinaryExpression(self, expression: BinaryExpression) -> Generator[VisitResult]:
+    def OnBinaryExpression(self, element: BinaryExpression) -> Generator[VisitResult]:
         self._streams.append(StreamDecorator(self._streams[-1], line_prefix="  "))
         with ExitStack(lambda: self._streams.pop()):
             yield VisitResult.Continue
 
     # ----------------------------------------------------------------------
     @contextmanager
-    def OnTerminalExpression(self, expression: TerminalExpression) -> Generator[VisitResult]:
-        self._streams[-1].write(f"{expression.value}\n")
+    def OnTerminalElement(self, element: TerminalElement) -> Generator[VisitResult]:
+        self._streams[-1].write(f"{element.value}\n")
         yield VisitResult.Continue

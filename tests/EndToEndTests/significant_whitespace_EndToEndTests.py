@@ -16,7 +16,7 @@ from dbrownell_Common.TestHelpers.StreamTestHelpers import GenerateDoneManagerAn
 from dbrownell_ParserLib.antlr.antlr_parser import AntlrParser, CreateAntlrParser
 from dbrownell_ParserLib.antlr.antlr_visitor_mixin import AntlrVisitorMixin
 from dbrownell_ParserLib.errors import Error, ErrorException
-from dbrownell_ParserLib.terminal_expression import Expression, TerminalExpression
+from dbrownell_ParserLib.terminal_element import Element, TerminalElement
 
 from .test_helpers import BinaryExpression, OutputVisitor, UnaryExpression
 
@@ -40,7 +40,7 @@ def parser():
             if value.endswith("newLine"):
                 value = value[: -len("newLine")]
 
-            self._stack.append(TerminalExpression[int](self.CreateRegion(ctx), int(value)))
+            self._stack.append(TerminalElement[int](self.CreateRegion(ctx), int(value)))
 
         # ----------------------------------------------------------------------
         def visitUnary_expr(self, ctx: Parser.Unary_exprContext):
@@ -50,12 +50,12 @@ def parser():
 
             children = self.GetChildren(ctx)
             assert len(children) == 1
-            assert isinstance(children[0], Expression), children[0]
+            assert isinstance(children[0], Element), children[0]
 
             self._stack.append(
                 UnaryExpression(
                     self.CreateRegion(ctx),
-                    TerminalExpression[str](operator_region, operator),
+                    TerminalElement[str](operator_region, operator),
                     children[0],
                 ),
             )
@@ -82,14 +82,14 @@ def parser():
 
             children = self.GetChildren(ctx)
             assert len(children) == 2, children
-            assert isinstance(children[0], Expression), children[0]
-            assert isinstance(children[1], Expression), children[1]
+            assert isinstance(children[0], Element), children[0]
+            assert isinstance(children[1], Element), children[1]
 
             self._stack.append(
                 BinaryExpression(
                     self.CreateRegion(ctx),
                     children[0],
-                    TerminalExpression[str](operator_region, operator),
+                    TerminalElement[str](operator_region, operator),
                     children[1],
                 ),
             )
@@ -139,45 +139,45 @@ def test_SingleFile(parser):
     output = StringIO()
     visitor = OutputVisitor(output)
 
-    for expression in result._stack:
-        expression.Accept(visitor)
+    for element in result._stack:
+        element.Accept(visitor)
         output.write("\n")
 
     assert output.getvalue() == textwrap.dedent(
         """\
         UnaryExpression, Ln 1 Col 1 - Ln 7 Col 1
-        TerminalExpression, Ln 1 Col 2 - Ln 1 Col 3
+        TerminalElement, Ln 1 Col 2 - Ln 1 Col 3
         -
         BinaryExpression, Ln 2 Col 5 - Ln 7 Col 1
           BinaryExpression, Ln 3 Col 9 - Ln 5 Col 15
-            TerminalExpression, Ln 4 Col 13 - Ln 4 Col 14
+            TerminalElement, Ln 4 Col 13 - Ln 4 Col 14
             1
-            TerminalExpression, Ln 3 Col 9 - Ln 3 Col 10
+            TerminalElement, Ln 3 Col 9 - Ln 3 Col 10
             +
-            TerminalExpression, Ln 5 Col 13 - Ln 5 Col 15
+            TerminalElement, Ln 5 Col 13 - Ln 5 Col 15
             22
-          TerminalExpression, Ln 2 Col 5 - Ln 2 Col 6
+          TerminalElement, Ln 2 Col 5 - Ln 2 Col 6
           /
-          TerminalExpression, Ln 6 Col 9 - Ln 6 Col 12
+          TerminalElement, Ln 6 Col 9 - Ln 6 Col 12
           333
 
-        TerminalExpression, Ln 8 Col 1 - Ln 8 Col 2
+        TerminalElement, Ln 8 Col 1 - Ln 8 Col 2
         4
 
         BinaryExpression, Ln 10 Col 1 - Ln 13 Col 1
-          TerminalExpression, Ln 11 Col 5 - Ln 11 Col 6
+          TerminalElement, Ln 11 Col 5 - Ln 11 Col 6
           5
-          TerminalExpression, Ln 10 Col 1 - Ln 10 Col 2
+          TerminalElement, Ln 10 Col 1 - Ln 10 Col 2
           +
-          TerminalExpression, Ln 12 Col 5 - Ln 12 Col 6
+          TerminalElement, Ln 12 Col 5 - Ln 12 Col 6
           6
 
         BinaryExpression, Ln 14 Col 1 - Ln 17 Col 1
-          TerminalExpression, Ln 15 Col 5 - Ln 15 Col 6
+          TerminalElement, Ln 15 Col 5 - Ln 15 Col 6
           8
-          TerminalExpression, Ln 14 Col 1 - Ln 14 Col 2
+          TerminalElement, Ln 14 Col 1 - Ln 14 Col 2
           *
-          TerminalExpression, Ln 16 Col 5 - Ln 16 Col 9
+          TerminalElement, Ln 16 Col 5 - Ln 16 Col 9
           9999
 
         """,
