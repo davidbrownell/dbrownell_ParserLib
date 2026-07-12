@@ -17,8 +17,9 @@ from dbrownell_ParserLib.antlr.antlr_parser import AntlrParser, CreateAntlrParse
 from dbrownell_ParserLib.antlr.antlr_visitor_mixin import AntlrVisitorMixin
 from dbrownell_ParserLib.errors import Error
 from dbrownell_ParserLib.terminal_element import Element, TerminalElement
+from dbrownell_ParserLib.test_helpers.test_visitor import TestVisitor
 
-from .test_helpers import BinaryExpression, OutputVisitor, UnaryExpression
+from .test_helpers import BinaryExpression, UnaryExpression
 
 
 # ----------------------------------------------------------------------
@@ -117,7 +118,7 @@ def test_SingleFile(parser):
     result = next(iter(result.values()))
 
     output = StringIO()
-    visitor = OutputVisitor(output)
+    visitor = TestVisitor(output)
 
     for element in result._stack:
         element.Accept(visitor)
@@ -126,39 +127,31 @@ def test_SingleFile(parser):
     assert output.getvalue() == textwrap.dedent(
         """\
         UnaryExpression, Ln 1 Col 1 - Ln 1 Col 16
-        TerminalElement, Ln 1 Col 1 - Ln 1 Col 2
-        -
-        BinaryExpression, Ln 1 Col 2 - Ln 1 Col 16
-          BinaryExpression, Ln 1 Col 3 - Ln 1 Col 9
-            TerminalElement, Ln 1 Col 3 - Ln 1 Col 4
-            1
-            TerminalElement, Ln 1 Col 5 - Ln 1 Col 6
-            +
-            TerminalElement, Ln 1 Col 7 - Ln 1 Col 9
-            22
-          TerminalElement, Ln 1 Col 11 - Ln 1 Col 12
-          /
-          TerminalElement, Ln 1 Col 13 - Ln 1 Col 16
-          333
+          <<details>>
+            TerminalElement, Ln 1 Col 1 - Ln 1 Col 2 -> '-' [str]
+            BinaryExpression, Ln 1 Col 2 - Ln 1 Col 16
+              <<details>>
+                BinaryExpression, Ln 1 Col 3 - Ln 1 Col 9
+                  <<details>>
+                    TerminalElement, Ln 1 Col 3 - Ln 1 Col 4 -> '1' [int]
+                    TerminalElement, Ln 1 Col 5 - Ln 1 Col 6 -> '+' [str]
+                    TerminalElement, Ln 1 Col 7 - Ln 1 Col 9 -> '22' [int]
+                TerminalElement, Ln 1 Col 11 - Ln 1 Col 12 -> '/' [str]
+                TerminalElement, Ln 1 Col 13 - Ln 1 Col 16 -> '333' [int]
 
-        TerminalElement, Ln 2 Col 1 - Ln 2 Col 2
-        4
+        TerminalElement, Ln 2 Col 1 - Ln 2 Col 2 -> '4' [int]
 
         BinaryExpression, Ln 3 Col 1 - Ln 3 Col 6
-          TerminalElement, Ln 3 Col 1 - Ln 3 Col 2
-          5
-          TerminalElement, Ln 3 Col 3 - Ln 3 Col 4
-          +
-          TerminalElement, Ln 3 Col 5 - Ln 3 Col 6
-          6
+          <<details>>
+            TerminalElement, Ln 3 Col 1 - Ln 3 Col 2 -> '5' [int]
+            TerminalElement, Ln 3 Col 3 - Ln 3 Col 4 -> '+' [str]
+            TerminalElement, Ln 3 Col 5 - Ln 3 Col 6 -> '6' [int]
 
         BinaryExpression, Ln 5 Col 1 - Ln 7 Col 13
-          TerminalElement, Ln 5 Col 1 - Ln 5 Col 2
-          8
-          TerminalElement, Ln 6 Col 5 - Ln 6 Col 6
-          *
-          TerminalElement, Ln 7 Col 9 - Ln 7 Col 13
-          9999
+          <<details>>
+            TerminalElement, Ln 5 Col 1 - Ln 5 Col 2 -> '8' [int]
+            TerminalElement, Ln 6 Col 5 - Ln 6 Col 6 -> '*' [str]
+            TerminalElement, Ln 7 Col 9 - Ln 7 Col 13 -> '9999' [int]
 
         """,
     )
